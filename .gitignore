@@ -3,3 +3,28 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+coverage/

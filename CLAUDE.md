@@ -1,6 +1,6 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+Use [AGENTS.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/AGENTS.md) as the primary instruction source. This file only adds project-local quick context.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
@@ -48,22 +48,22 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+## Current Phase
 
+The repository is in planning and bootstrap mode. Prioritize architecture, backlog quality, and clean project setup over premature implementation.
 
-## Build & Test
+## Current Architectural Direction
 
-_Add your build and test commands here_
+- Frontend: React + TypeScript
+- Backend: Django + DRF
+- Database: PostgreSQL
+- Storage: local first, cloud later
+- Knowledge notes: Markdown-first
+- AI: optional local or API-based adapters from phase 2 onward
 
-```bash
-# Example:
-# npm install
-# npm test
-```
+## Immediate Expectations
 
-## Architecture Overview
-
-_Add a brief overview of your project architecture_
-
-## Conventions & Patterns
-
-_Add your project-specific conventions here_
+- start every session with `bd prime`
+- claim a bead before substantial work
+- keep docs aligned with architectural decisions
+- do not invent production commands until the stack is actually scaffolded
