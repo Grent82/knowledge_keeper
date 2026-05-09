@@ -8,7 +8,7 @@ Lokale Entwicklung ist die erste Zielumgebung. Hosting und Cloud-Storage kommen 
 
 - Node.js fuer das Frontend
 - pnpm als Paketmanager
-- Python 3.12+ fuer das Backend
+- Python 3.10+ fuer das Backend
 - PostgreSQL lokal
 
 ## Verzeichnisse
@@ -27,14 +27,36 @@ Lokale Entwicklung ist die erste Zielumgebung. Hosting und Cloud-Storage kommen 
 mkdir -p var/media
 ```
 
-## Geplante lokale Startreihenfolge
+## Setup
 
-1. Backend-Abhaengigkeiten installieren
-2. Frontend-Abhaengigkeiten installieren
-3. Datenbank verbinden
-4. Backend starten
-5. Frontend starten
+```bash
+make frontend-install
+make backend-install
+mkdir -p var/media
+cp .env.example .env
+```
+
+## Lokale Startreihenfolge
+
+1. Backend starten
+
+```bash
+.venv/bin/python backend/manage.py runserver
+```
+
+2. Frontend starten
+
+```bash
+pnpm --filter @knowledge-keeper/frontend dev
+```
+
+3. Qualitaetschecks ausfuehren
+
+```bash
+make quality
+pnpm --filter @knowledge-keeper/frontend build
+```
 
 ## Hinweis
 
-Die exakten Startkommandos werden im naechsten Scaffolding-Inkrement verdrahtet, sobald das Django-Projekt und die Vite-App vollstaendig bootfaehig sind.
+SQLite wird aktuell fuer das lokale Backend-Basissetup verwendet. PostgreSQL bleibt die geplante Ziel-Datenbank fuer die produktive Architektur.

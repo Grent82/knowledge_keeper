@@ -1,14 +1,20 @@
-.PHONY: help doctor beads-lint quality format lint test typecheck
+.PHONY: help doctor beads-lint quality format lint test typecheck backend-check frontend-install backend-install
+
+PYTHON := .venv/bin/python
+PIP := .venv/bin/pip
+PNPM := pnpm
 
 help:
 	@printf "Targets:\\n"
 	@printf "  doctor      Run backlog and repo health checks\\n"
 	@printf "  beads-lint  Validate beads hygiene\\n"
 	@printf "  quality     Run currently available quality gates\\n"
-	@printf "  format      Placeholder until code scaffold is installed\\n"
-	@printf "  lint        Placeholder until code scaffold is installed\\n"
-	@printf "  test        Placeholder until code scaffold is installed\\n"
-	@printf "  typecheck   Placeholder until code scaffold is installed\\n"
+	@printf "  frontend-install  Install frontend dependencies\\n"
+	@printf "  backend-install   Create local venv and install backend dependencies\\n"
+	@printf "  format      Run available formatting checks\\n"
+	@printf "  lint        Run available lint checks\\n"
+	@printf "  test        Run available tests/checks\\n"
+	@printf "  typecheck   Run available type checks\\n"
 
 doctor:
 	bd doctor
@@ -17,16 +23,32 @@ beads-lint:
 	bd lint
 
 quality: doctor beads-lint
+	$(MAKE) lint
+	$(MAKE) typecheck
+	$(MAKE) test
 	git status --short
 
 format:
-	@printf "format target not wired yet; implement after frontend/backend scaffold\\n"
+	@printf "No formatter wired yet; add after prettier/ruff format decisions are finalized\\n"
 
 lint:
-	@printf "lint target not wired yet; implement after frontend/backend scaffold\\n"
+	$(PNPM) --filter @knowledge-keeper/frontend lint
+	$(PYTHON) -m ruff check backend
 
 test:
-	@printf "test target not wired yet; implement after frontend/backend scaffold\\n"
+	$(PNPM) --filter @knowledge-keeper/frontend test
+	$(PYTHON) backend/manage.py check
+	$(PYTHON) -m pytest backend/tests
+	$(PYTHON) -m compileall backend
 
 typecheck:
-	@printf "typecheck target not wired yet; implement after frontend/backend scaffold\\n"
+	$(PNPM) --filter @knowledge-keeper/frontend typecheck
+	$(PYTHON) -m mypy --config-file backend/pyproject.toml backend/src
+
+frontend-install:
+	$(PNPM) install
+
+backend-install:
+	python3 -m venv .venv
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ./backend pytest pytest-django ruff mypy

@@ -1,6 +1,6 @@
-export function App() {
+export function HomePage() {
   return (
-    <main className="app-shell">
+    <>
       <section className="hero">
         <p className="eyebrow">Knowledge Keeper</p>
         <h1>Private media and knowledge platform</h1>
@@ -23,6 +23,6 @@ export function App() {
           <p>Prepare markdown-first notes, summaries and semantic links in later phases.</p>
         </article>
       </section>
-    </main>
+    </>
   );
 }

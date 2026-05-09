@@ -2,7 +2,7 @@
 name = "knowledge-keeper-backend"
 version = "0.1.0"
 description = "Backend for the Knowledge Keeper private media and knowledge platform"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
   "Django>=5.2,<6.0",
   "djangorestframework>=3.16,<4.0",
@@ -20,11 +20,17 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+explicit_package_bases = true
+exclude = ["manage.py"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]

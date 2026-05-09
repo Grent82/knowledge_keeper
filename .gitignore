@@ -22,9 +22,18 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
+backend/.pytest_cache/
+backend/.mypy_cache/
+frontend/.vitest/
+
+# Python local db / media
+backend/db.sqlite3
+var/
 
 # Node
 node_modules/
 dist/
 build/
 coverage/
+*.tsbuildinfo
