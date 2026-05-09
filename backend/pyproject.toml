@@ -1,0 +1,30 @@
+[project]
+name = "knowledge-keeper-backend"
+version = "0.1.0"
+description = "Backend for the Knowledge Keeper private media and knowledge platform"
+requires-python = ">=3.12"
+dependencies = [
+  "Django>=5.2,<6.0",
+  "djangorestframework>=3.16,<4.0",
+  "psycopg[binary]>=3.2,<4.0",
+  "celery>=5.4,<6.0"
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9.0",
+  "pytest-django>=4.11,<5.0",
+  "ruff>=0.11,<0.12",
+  "mypy>=1.15,<2.0"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

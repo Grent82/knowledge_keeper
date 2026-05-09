@@ -9,6 +9,9 @@ Knowledge Keeper ist eine private Wissensplattform fuer Audio, Video und spaeter
 - Follow [docs/engineering-standards.md](docs/engineering-standards.md).
 - Use [docs/task-contract.md](docs/task-contract.md) when writing or refining Beads.
 - Use the arc42 seed docs under [docs/arc42](docs/arc42).
+- Use the workflow docs under [docs/workflows](docs/workflows).
+- Use the role docs under [docs/roles](docs/roles) when work naturally falls into architecture, backend, frontend, QA or coordination.
+- Check accepted decisions under [docs/adr](docs/adr) before introducing new structure.
 
 ## Required Workflow
 
@@ -38,6 +41,8 @@ Do not start substantial implementation before the active bead is claimed.
 - Use TDD for domain and application behavior where practical.
 - Record architectural assumptions in `docs/` when they affect future work.
 - Create follow-up beads instead of silently expanding scope.
+- Run `make quality` before closing substantial work.
+- Update `Makefile` quality targets when new runnable tooling is introduced.
 
 ## Non-Interactive Shell Commands
 

@@ -1,0 +1,83 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #17202a;
+  background:
+    radial-gradient(circle at top left, rgba(255, 195, 113, 0.35), transparent 32rem),
+    linear-gradient(180deg, #f5f1e8 0%, #efe7da 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 64px 24px 80px;
+}
+
+.hero {
+  padding: 40px 0 32px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.82rem;
+  color: #9b5d2e;
+}
+
+.hero h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  line-height: 0.94;
+}
+
+.intro {
+  max-width: 42rem;
+  margin-top: 20px;
+  font-size: 1.1rem;
+  color: #4d5a66;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 28px;
+}
+
+.card {
+  border: 1px solid rgba(23, 32, 42, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 14px 32px rgba(71, 55, 32, 0.08);
+}
+
+.card h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.15rem;
+}
+
+.card p {
+  margin: 0;
+  color: #51606d;
+}
