@@ -30,13 +30,23 @@ mkdir -p var/media
 ## Setup
 
 ```bash
-make frontend-install
-make backend-install
-mkdir -p var/media
-cp .env.example .env
+./scripts/setup.sh
 ```
 
-## Lokale Startreihenfolge
+## App starten
+
+```bash
+pnpm dev
+```
+
+Das startet:
+
+- Backend auf `http://localhost:8000`
+- Frontend auf `http://localhost:3000` oder dem naechsten freien Port
+
+`Ctrl+C` beendet beide Prozesse zusammen.
+
+## Manuelle Alternative
 
 1. Backend starten
 
