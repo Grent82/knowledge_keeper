@@ -41,7 +41,7 @@ pnpm dev
 
 Das startet:
 
-- Backend auf `http://localhost:8000`
+- Backend auf `http://localhost:8000` oder dem naechsten freien Port
 - Frontend auf `http://localhost:3000` oder dem naechsten freien Port
 
 `Ctrl+C` beendet beide Prozesse zusammen.

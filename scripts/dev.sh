@@ -5,6 +5,26 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+find_free_port() {
+  python3 - "$1" <<'PY'
+import socket
+import sys
+
+start = int(sys.argv[1])
+
+for port in range(start, start + 20):
+    with socket.socket() as sock:
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            continue
+        print(port)
+        raise SystemExit(0)
+
+raise SystemExit(1)
+PY
+}
+
 mkdir -p var/media
 
 if [ ! -f .env ]; then
@@ -32,8 +52,10 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-echo "Starting backend on http://localhost:8000 ..."
-.venv/bin/python backend/manage.py runserver >/tmp/knowledge-keeper-backend.log 2>&1 &
+BACKEND_PORT="$(find_free_port 8000)"
+
+echo "Starting backend on http://localhost:${BACKEND_PORT} ..."
+.venv/bin/python backend/manage.py runserver "${BACKEND_PORT}" >/tmp/knowledge-keeper-backend.log 2>&1 &
 BACKEND_PID=$!
 
 sleep 2
