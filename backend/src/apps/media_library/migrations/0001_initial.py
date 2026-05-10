@@ -25,6 +25,7 @@ class Migration(migrations.Migration):
                 ('external_id', models.CharField(blank=True, max_length=255)),
                 ('title', models.CharField(blank=True, max_length=255)),
                 ('author_name', models.CharField(blank=True, max_length=255)),
+                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_external_sources', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'ordering': ['provider', 'title', 'source_url'],
@@ -44,6 +45,7 @@ class Migration(migrations.Migration):
                 ('duration_seconds', models.PositiveIntegerField(blank=True, null=True)),
                 ('width', models.PositiveIntegerField(blank=True, null=True)),
                 ('height', models.PositiveIntegerField(blank=True, null=True)),
+                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_media_assets', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'abstract': False,

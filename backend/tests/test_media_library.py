@@ -48,6 +48,7 @@ def test_media_item_can_link_asset_and_external_source():
         source_url="https://youtube.com/watch?v=abc123",
         external_id="abc123",
         title="Focus Session",
+        created_by=owner,
     )
     asset = MediaAsset.objects.create(
         origin=AssetOrigin.LOCAL_UPLOAD,
@@ -57,6 +58,7 @@ def test_media_item_can_link_asset_and_external_source():
         duration_seconds=3600,
         width=1920,
         height=1080,
+        created_by=owner,
     )
 
     item = MediaItem.objects.create(

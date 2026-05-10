@@ -31,6 +31,8 @@ mkdir -p var/media
 
 ```bash
 ./scripts/setup.sh
+.venv/bin/python backend/manage.py migrate
+.venv/bin/python backend/manage.py bootstrap_owner --username owner --password secret
 ```
 
 ## App starten

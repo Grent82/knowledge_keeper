@@ -98,6 +98,11 @@ class ExternalSource(TimestampedModel):
     external_id = models.CharField(max_length=255, blank=True)
     title = models.CharField(max_length=255, blank=True)
     author_name = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_external_sources",
+    )
 
     class Meta:
         ordering = ["provider", "title", "source_url"]
@@ -123,6 +128,11 @@ class MediaAsset(TimestampedModel):
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_media_assets",
+    )
 
     def __str__(self) -> str:
         return self.storage_path

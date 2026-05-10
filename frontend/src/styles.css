@@ -81,3 +81,81 @@ body {
   margin: 0;
   color: #51606d;
 }
+
+.auth-card {
+  max-width: 460px;
+}
+
+.muted {
+  color: #51606d;
+}
+
+.stack-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  font-size: 0.92rem;
+  color: #51606d;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(23, 32, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: #9b5d2e;
+  color: #fffdf8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.secondary-button {
+  background: rgba(23, 32, 42, 0.08);
+  color: #17202a;
+}
+
+.hero-actions {
+  margin-top: 18px;
+}
+
+.error-text {
+  margin: 0;
+  color: #8f2e2e;
+}
+
+.empty-state {
+  color: #6d7a86;
+}
+
+.simple-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 18px 0 0;
+}
+
+.simple-list li {
+  display: grid;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 32, 42, 0.08);
+}

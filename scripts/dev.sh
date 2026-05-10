@@ -67,4 +67,4 @@ if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
 fi
 
 echo "Starting frontend on http://localhost:3000 ..."
-pnpm --filter @knowledge-keeper/frontend dev
+VITE_BACKEND_TARGET="http://localhost:${BACKEND_PORT}" pnpm --filter @knowledge-keeper/frontend dev

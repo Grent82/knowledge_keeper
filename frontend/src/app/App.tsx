@@ -1,10 +1,10 @@
 import { AppShell } from "./AppShell";
-import { HomePage } from "../features/home/HomePage";
+import { AppScreen } from "../features/app-shell/AppScreen";
 
 export function App() {
   return (
     <AppShell>
-      <HomePage />
+      <AppScreen />
     </AppShell>
   );
 }

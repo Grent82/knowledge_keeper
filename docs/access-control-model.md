@@ -51,13 +51,12 @@ Knowledge Keeper ist ein privater Wissensspeicher. Das Berechtigungsmodell soll 
 
 ## API-Leitlinien
 
-- Auth via Django/DRF Session oder Token folgt in eigenem Inkrement
+- initiale Auth via Django/DRF Session
 - jede API-Antwort mit nutzergebundenen Daten muss auf den angemeldeten Nutzer filtern
 - Admin-Rechte werden nicht aus UI-Verhalten abgeleitet, sondern serverseitig geprueft
 
 ## Folgearbeit
 
-1. Login- und Session-/Token-Strategie konkretisieren
-2. Sichtbarkeitsobjekte fuer Kategorien und Medien modellieren
-3. Fortschrittsmodell pro Nutzer und Medium einfuehren
-4. API-Berechtigungen fuer Owner vs. RestrictedUser umsetzen
+1. Sichtbarkeitsvererbung fuer Unterkategorien konkretisieren
+2. Fortschrittsendpunkte mit echter UI koppeln
+3. API-Berechtigungen fuer Owner vs. RestrictedUser weiter ausbauen

@@ -18,14 +18,21 @@ class TagAdmin(admin.ModelAdmin):
 
 @admin.register(ExternalSource)
 class ExternalSourceAdmin(admin.ModelAdmin):
-    list_display = ("provider", "title", "source_url", "external_id")
+    list_display = ("provider", "title", "source_url", "external_id", "created_by")
     list_filter = ("provider",)
     search_fields = ("title", "source_url", "external_id")
 
 
 @admin.register(MediaAsset)
 class MediaAssetAdmin(admin.ModelAdmin):
-    list_display = ("storage_path", "origin", "file_format", "mime_type", "duration_seconds")
+    list_display = (
+        "storage_path",
+        "origin",
+        "file_format",
+        "mime_type",
+        "duration_seconds",
+        "created_by",
+    )
     list_filter = ("origin", "file_format")
     search_fields = ("storage_path", "mime_type")
 
