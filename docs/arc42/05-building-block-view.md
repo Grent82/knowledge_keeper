@@ -35,6 +35,7 @@
 ## Zentrale Domainen
 
 - User
+- UserRole
 - Role
 - MediaItem
 - MediaAsset

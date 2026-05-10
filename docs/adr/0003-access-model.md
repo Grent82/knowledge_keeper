@@ -11,6 +11,7 @@ Das System ist primaer privat, soll aber einem eingeschraenkten Zweitnutzer sele
 ## Decision
 
 - Start mit zwei Rollen: `Owner` und `RestrictedUser`
+- eigenes Django-User-Modell mit Rollenfeld
 - Fortschritt, Status und Verlauf sind immer pro Nutzer gespeichert
 - Sichtbarkeit wird separat auf Kategorien, Unterkategorien und Medien modelliert
 

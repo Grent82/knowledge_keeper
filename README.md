@@ -27,6 +27,7 @@ Knowledge Keeper ist ein privater Wissensspeicher mit Weboberflaeche. Der Schwer
 - [docs/repo-structure.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/repo-structure.md)
 - [docs/quality-gates.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/quality-gates.md)
 - [docs/local-development.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/local-development.md)
+- [docs/access-control-model.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/access-control-model.md)
 - [docs/agent-operating-model.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/agent-operating-model.md)
 - [docs/engineering-standards.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/engineering-standards.md)
 - [docs/task-contract.md](/Users/andre.dittrich/privat/projects/knowledge_keeper/docs/task-contract.md)
