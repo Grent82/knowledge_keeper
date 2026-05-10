@@ -45,5 +45,6 @@
 - VisibilityRule
 - PlaybackProgress
 - Transcript
+- TranscriptSegment
 - Summary
 - KnowledgeNote
