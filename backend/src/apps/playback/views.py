@@ -5,8 +5,13 @@ from apps.access_control.services import visible_media_items_queryset
 from apps.common.permissions import IsOwnerRole
 from apps.media_library.models import MediaItem
 
-from .models import PlaybackProgress, Summary, Transcript
-from .serializers import PlaybackProgressSerializer, SummarySerializer, TranscriptSerializer
+from .models import PlaybackProgress, Summary, Transcript, TranscriptSegment
+from .serializers import (
+    PlaybackProgressSerializer,
+    SummarySerializer,
+    TranscriptSegmentSerializer,
+    TranscriptSerializer,
+)
 
 
 class PlaybackProgressViewSet(ModelViewSet):
@@ -31,9 +36,13 @@ class TranscriptViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerRole]
 
     def get_queryset(self):
-        return Transcript.objects.filter(media_item__owner=self.request.user).select_related(
+        queryset = Transcript.objects.filter(media_item__owner=self.request.user).select_related(
             "media_item"
         )
+        media_item_id = self.request.query_params.get("media_item")
+        if media_item_id:
+            queryset = queryset.filter(media_item_id=media_item_id)
+        return queryset
 
     def perform_create(self, serializer):
         media_item = serializer.validated_data["media_item"]
@@ -47,12 +56,30 @@ class SummaryViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated, IsOwnerRole]
 
     def get_queryset(self):
-        return Summary.objects.filter(media_item__owner=self.request.user).select_related(
+        queryset = Summary.objects.filter(media_item__owner=self.request.user).select_related(
             "media_item", "transcript"
         )
+        media_item_id = self.request.query_params.get("media_item")
+        if media_item_id:
+            queryset = queryset.filter(media_item_id=media_item_id)
+        return queryset
 
     def perform_create(self, serializer):
         media_item: MediaItem = serializer.validated_data["media_item"]
         if media_item.owner_id != self.request.user.id:
             self.permission_denied(self.request, message="Only the owner can create artifacts.")
         serializer.save()
+
+
+class TranscriptSegmentViewSet(ModelViewSet):
+    serializer_class = TranscriptSegmentSerializer
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+
+    def get_queryset(self):
+        queryset = TranscriptSegment.objects.filter(
+            transcript__media_item__owner=self.request.user
+        ).select_related("transcript")
+        transcript_id = self.request.query_params.get("transcript")
+        if transcript_id:
+            queryset = queryset.filter(transcript_id=transcript_id)
+        return queryset.order_by("sequence_number")

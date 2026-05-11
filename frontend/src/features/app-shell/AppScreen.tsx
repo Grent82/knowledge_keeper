@@ -4,19 +4,28 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   createCategoryVisibilityAssignment,
   createCategory,
+  createExternalSource,
   createMediaItemFromAsset,
+  createMediaItemFromExternalSource,
   createMediaVisibilityAssignment,
   createPlaybackProgress,
   createRestrictedUser,
   createTag,
+  deleteCategory,
   deleteCategoryVisibilityAssignment,
+  deleteMediaItem,
   deleteMediaVisibilityAssignment,
+  deleteRestrictedUser,
+  deleteTag,
   fetchSearchSuggestions,
   fetchSession,
   login,
   logout,
+  updateCategory,
+  updateMediaItem,
   updateMediaItemAssignments,
   updatePlaybackProgress,
+  updateTag,
   uploadMediaAsset,
 } from "./api";
 import { Dashboard } from "./Dashboard";
@@ -212,6 +221,38 @@ export function AppScreen() {
     }
   }
 
+  async function handleCreateExternalMediaItem(
+    provider: string,
+    sourceUrl: string,
+    externalId: string,
+    sourceTitle: string,
+    authorName: string,
+    itemTitle: string,
+    mediaType: string,
+    description: string,
+  ) {
+    try {
+      setCreateError("");
+      const source = await createExternalSource(
+        provider,
+        sourceUrl,
+        externalId,
+        sourceTitle,
+        authorName,
+      );
+      const item = await createMediaItemFromExternalSource(
+        itemTitle,
+        mediaType,
+        description,
+        source.id,
+      );
+      await refresh();
+      navigateToMediaItem(item.id);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "External source creation failed.");
+    }
+  }
+
   async function handlePersistProgress(mediaItemId: number, currentTime: number, duration: number) {
     const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
     const existingEntry = playbackEntries.find((entry) => entry.media_item === mediaItemId);
@@ -245,6 +286,71 @@ export function AppScreen() {
     }
   }
 
+  async function handleUpdateMediaItem(
+    id: number,
+    data: { title: string; description: string; media_type: string },
+  ) {
+    try {
+      setCreateError("");
+      const updatedMediaItem = await updateMediaItem(id, data);
+      await refresh();
+      navigateToMediaItem(updatedMediaItem.id);
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Media item update failed.");
+    }
+  }
+
+  async function handleDeleteMediaItem(id: number) {
+    try {
+      setCreateError("");
+      await deleteMediaItem(id);
+      navigate("/");
+      await refresh();
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : "Media item deletion failed.");
+    }
+  }
+
+  async function handleUpdateCategory(id: number, data: { name: string; parent: number | null }) {
+    try {
+      setCategoryError("");
+      await updateCategory(id, data);
+      await refresh();
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : "Category update failed.");
+    }
+  }
+
+  async function handleDeleteCategory(id: number) {
+    try {
+      setCategoryError("");
+      await deleteCategory(id);
+      await refresh();
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : "Category deletion failed.");
+    }
+  }
+
+  async function handleUpdateTag(id: number, data: { name: string }) {
+    try {
+      setTagError("");
+      await updateTag(id, data);
+      await refresh();
+    } catch (error) {
+      setTagError(error instanceof Error ? error.message : "Tag update failed.");
+    }
+  }
+
+  async function handleDeleteTag(id: number) {
+    try {
+      setTagError("");
+      await deleteTag(id);
+      await refresh();
+    } catch (error) {
+      setTagError(error instanceof Error ? error.message : "Tag deletion failed.");
+    }
+  }
+
   async function handleUpdateMediaItemAssignments(
     mediaItemId: number,
     categoryIds: number[],
@@ -271,6 +377,18 @@ export function AppScreen() {
     } catch (error) {
       setRestrictedUserError(
         error instanceof Error ? error.message : "Restricted user creation failed.",
+      );
+    }
+  }
+
+  async function handleDeleteRestrictedUser(id: number) {
+    try {
+      setRestrictedUserError("");
+      await deleteRestrictedUser(id);
+      await refresh();
+    } catch (error) {
+      setRestrictedUserError(
+        error instanceof Error ? error.message : "Restricted user deletion failed.",
       );
     }
   }
@@ -342,8 +460,13 @@ export function AppScreen() {
       mediaItems={visibleMediaItems}
       onChangeSearchQuery={setSearchQuery}
       onCreateCategory={handleCreateCategory}
+      onCreateExternalMediaItem={handleCreateExternalMediaItem}
       onCreateRestrictedUser={handleCreateRestrictedUser}
       onCreateTag={handleCreateTag}
+      onDeleteCategory={handleDeleteCategory}
+      onDeleteMediaItem={handleDeleteMediaItem}
+      onDeleteRestrictedUser={handleDeleteRestrictedUser}
+      onDeleteTag={handleDeleteTag}
       onLogout={handleLogout}
       onPersistProgress={handlePersistProgress}
       onSaveVisibility={handleSaveVisibility}
@@ -351,7 +474,10 @@ export function AppScreen() {
       onSelectMediaItem={handleSelectMediaItem}
       onSelectRestrictedUser={setSelectedRestrictedUserId}
       onSelectTag={setSelectedTagId}
+      onUpdateCategory={handleUpdateCategory}
+      onUpdateMediaItem={handleUpdateMediaItem}
       onUpdateMediaItemAssignments={handleUpdateMediaItemAssignments}
+      onUpdateTag={handleUpdateTag}
       onUploadMediaItem={handleUploadMediaItem}
       ownerMediaItems={mediaItems}
       playbackEntries={playbackEntries}

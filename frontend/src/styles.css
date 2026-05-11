@@ -166,6 +166,17 @@ button:disabled {
   margin-top: 10px;
 }
 
+.library-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.sort-dir-button {
+  min-width: 48px;
+}
+
 .simple-list li {
   display: grid;
   gap: 4px;
@@ -301,6 +312,21 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.management-list {
+  margin-top: 22px;
+}
+
+.inline-edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.media-item-actions,
+.media-item-edit-form {
+  margin-top: 16px;
 }
 
 .suggestion-layout {
@@ -341,11 +367,17 @@ button:disabled {
   line-height: 1.4;
 }
 
-.media-player {
+.media-player,
+.media-embed {
   width: 100%;
   margin-top: 18px;
   border-radius: 16px;
   background: #111;
+}
+
+.media-embed {
+  aspect-ratio: 16 / 9;
+  border: 0;
 }
 
 .section-heading {
@@ -362,12 +394,72 @@ button:disabled {
   margin: 32px 0 0;
 }
 
-.player-card {
+.artifact-error {
+  margin-top: 16px;
+}
+
+.artifact-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.artifact-section h3,
+.artifact-segments h4 {
+  margin: 0;
+}
+
+.artifact-content {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: #17202a;
+}
+
+.artifact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.artifact-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  background: rgba(23, 32, 42, 0.08);
+}
+
+.artifact-status-pending {
+  background: rgba(155, 93, 46, 0.14);
+  color: #9b5d2e;
+}
+
+.artifact-status-processing {
+  background: rgba(38, 102, 191, 0.14);
+  color: #2666bf;
+}
+
+.artifact-status-ready {
+  background: rgba(47, 143, 78, 0.14);
+  color: #2f8f4e;
+}
+
+.artifact-status-failed {
+  background: rgba(143, 46, 46, 0.14);
+  color: #8f2e2e;
+}
+
+.player-card,
+.transcript-card {
   grid-column: span 2;
 }
 
 @media (max-width: 680px) {
-  .player-card {
+  .player-card,
+  .transcript-card {
     grid-column: span 1;
   }
 }

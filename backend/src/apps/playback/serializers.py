@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import PlaybackProgress, Summary, Transcript
+from .models import PlaybackProgress, Summary, Transcript, TranscriptSegment
 
 
 class PlaybackProgressSerializer(serializers.ModelSerializer):
@@ -34,6 +34,22 @@ class TranscriptSerializer(serializers.ModelSerializer):
             "markdown_content",
             "error_message",
             "generated_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TranscriptSegmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TranscriptSegment
+        fields = [
+            "id",
+            "transcript",
+            "sequence_number",
+            "start_seconds",
+            "end_seconds",
+            "content",
             "created_at",
             "updated_at",
         ]

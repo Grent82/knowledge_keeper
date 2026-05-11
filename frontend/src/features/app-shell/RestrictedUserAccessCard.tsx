@@ -19,6 +19,7 @@ type RestrictedUserAccessCardProps = {
   visibilityError: string;
   onSelectRestrictedUser: (userId: number | null) => void;
   onCreateRestrictedUser: (username: string, password: string, email: string) => Promise<void>;
+  onDeleteRestrictedUser: (id: number) => Promise<void>;
   onSaveVisibility: (
     userId: number,
     categoryIds: number[],
@@ -37,6 +38,7 @@ export function RestrictedUserAccessCard({
   visibilityError,
   onSelectRestrictedUser,
   onCreateRestrictedUser,
+  onDeleteRestrictedUser,
   onSaveVisibility,
 }: RestrictedUserAccessCardProps) {
   const selectedUser = restrictedUsers.find((user) => user.id === selectedRestrictedUserId) ?? null;
@@ -91,24 +93,38 @@ export function RestrictedUserAccessCard({
       </form>
 
       <div className="field">
-        <span>Selected restricted user</span>
+        <span>Restricted users</span>
         {restrictedUsers.length === 0 ? (
           <p className="empty-state">No restricted users yet.</p>
         ) : (
-          <select
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              onSelectRestrictedUser(nextValue ? Number(nextValue) : null);
-            }}
-            value={selectedRestrictedUserId ?? ""}
-          >
-            <option value="">Choose a user</option>
+          <ul className="simple-list compact-list management-list">
             {restrictedUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.username}
-              </option>
+              <li key={user.id} className={selectedRestrictedUserId === user.id ? "selected-item" : undefined}>
+                <strong>{user.username}</strong>
+                <span className="muted">{user.email || "No email provided"}</span>
+                <div className="inline-actions">
+                  <button
+                    className="secondary-button"
+                    onClick={() => onSelectRestrictedUser(user.id)}
+                    type="button"
+                  >
+                    {selectedRestrictedUserId === user.id ? "Selected" : "Select"}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      if (window.confirm("Delete this restricted user?")) {
+                        void onDeleteRestrictedUser(user.id);
+                      }
+                    }}
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
             ))}
-          </select>
+          </ul>
         )}
       </div>
 

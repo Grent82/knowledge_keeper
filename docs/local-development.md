@@ -50,6 +50,8 @@ Das startet:
 
 Falls das Frontend auf `3001`, `3002` oder `3003` startet, ist das lokale Django-Setup bereits als vertrauenswuerdige CSRF-Origin vorkonfiguriert.
 
+Der Celery-Worker bleibt vorerst optional und wird separat gestartet.
+
 ## Manuelle Alternative
 
 1. Backend starten
@@ -64,7 +66,13 @@ Falls das Frontend auf `3001`, `3002` oder `3003` startet, ist das lokale Django
 pnpm --filter @knowledge-keeper/frontend dev
 ```
 
-3. Qualitaetschecks ausfuehren
+3. Celery-Worker starten (optional, benoetigt Redis auf localhost:6379)
+
+```bash
+.venv/bin/celery -A config worker --loglevel=info --concurrency=1
+```
+
+4. Qualitaetschecks ausfuehren
 
 ```bash
 make quality

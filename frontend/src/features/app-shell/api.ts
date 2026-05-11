@@ -1,13 +1,17 @@
 import type {
   CategoryVisibilityAssignment,
   Category,
+  ExternalSource,
   MediaItem,
   MediaItemVisibilityAssignment,
   PlaybackProgress,
   RestrictedUser,
   SearchSuggestions,
   SessionState,
+  Summary,
   Tag,
+  Transcript,
+  TranscriptSegment,
 } from "./types";
 
 function readCookie(name: string): string {
@@ -131,6 +135,18 @@ export function fetchPlaybackProgress() {
   return request<PlaybackProgress[]>("/api/playback/progress");
 }
 
+export function fetchTranscripts(mediaItemId: number) {
+  return request<Transcript[]>(`/api/playback/transcripts?media_item=${mediaItemId}`);
+}
+
+export function fetchTranscriptSegments(transcriptId: number) {
+  return request<TranscriptSegment[]>(`/api/playback/segments?transcript=${transcriptId}`);
+}
+
+export function fetchSummaries(mediaItemId: number) {
+  return request<Summary[]>(`/api/playback/summaries?media_item=${mediaItemId}`);
+}
+
 export function fetchCategoryVisibilityAssignments() {
   return request<CategoryVisibilityAssignment[]>("/api/access/category-assignments");
 }
@@ -210,6 +226,44 @@ export function createMediaItemFromAsset(
   });
 }
 
+export function createExternalSource(
+  provider: string,
+  sourceUrl: string,
+  externalId: string,
+  title: string,
+  authorName: string,
+) {
+  return request<ExternalSource>("/api/media/sources", {
+    method: "POST",
+    body: JSON.stringify({
+      provider,
+      source_url: sourceUrl,
+      external_id: externalId,
+      title,
+      author_name: authorName,
+    }),
+  });
+}
+
+export function createMediaItemFromExternalSource(
+  title: string,
+  mediaType: string,
+  description: string,
+  sourceId: number,
+) {
+  return request<MediaItem>("/api/media/items", {
+    method: "POST",
+    body: JSON.stringify({
+      title,
+      media_type: mediaType,
+      description,
+      external_source: sourceId,
+      categories: [],
+      tags: [],
+    }),
+  });
+}
+
 export function updateMediaItemAssignments(
   mediaItemId: number,
   categories: number[],
@@ -222,6 +276,46 @@ export function updateMediaItemAssignments(
       tags,
     }),
   });
+}
+
+export function updateMediaItem(
+  id: number,
+  data: { title: string; description: string; media_type: string },
+) {
+  return request<MediaItem>(`/api/media/items/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteMediaItem(id: number) {
+  return request<void>(`/api/media/items/${id}`, { method: "DELETE" });
+}
+
+export function updateCategory(id: number, data: { name: string; parent: number | null }) {
+  return request<Category>(`/api/media/categories/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteCategory(id: number) {
+  return request<void>(`/api/media/categories/${id}`, { method: "DELETE" });
+}
+
+export function updateTag(id: number, data: { name: string }) {
+  return request<Tag>(`/api/media/tags/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTag(id: number) {
+  return request<void>(`/api/media/tags/${id}`, { method: "DELETE" });
+}
+
+export function deleteRestrictedUser(id: number) {
+  return request<void>(`/api/auth/restricted-users/${id}`, { method: "DELETE" });
 }
 
 export function createPlaybackProgress(mediaItemId: number, positionSeconds: number, progressPercent: number) {

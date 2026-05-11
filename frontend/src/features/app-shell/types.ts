@@ -28,6 +28,15 @@ export type RestrictedUser = {
   role: string;
 };
 
+export type ExternalSource = {
+  id: number;
+  provider: string;
+  source_url: string;
+  external_id: string;
+  title: string;
+  author_name: string;
+};
+
 export type CategoryVisibilityAssignment = {
   id: number;
   user: number;
@@ -55,6 +64,9 @@ export type MediaItem = {
   owner: number;
   asset: number | null;
   asset_detail: MediaAsset | null;
+  external_source: number | null;
+  external_source_detail: ExternalSource | null;
+  published_at: string | null;
   categories: number[];
   tags: number[];
 };
@@ -65,6 +77,40 @@ export type PlaybackProgress = {
   status: string;
   position_seconds: number;
   progress_percent: string;
+};
+
+export type Transcript = {
+  id: number;
+  media_item: number;
+  status: string;
+  provider: string;
+  language_code: string;
+  content: string;
+  markdown_content: string;
+  error_message: string;
+  generated_at: string | null;
+};
+
+export type TranscriptSegment = {
+  id: number;
+  transcript: number;
+  sequence_number: number;
+  start_seconds: string | null;
+  end_seconds: string | null;
+  content: string;
+};
+
+export type Summary = {
+  id: number;
+  media_item: number;
+  transcript: number | null;
+  status: string;
+  kind: string;
+  provider: string;
+  content: string;
+  markdown_content: string;
+  error_message: string;
+  generated_at: string | null;
 };
 
 export type SearchSuggestions = {

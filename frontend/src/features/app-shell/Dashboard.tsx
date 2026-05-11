@@ -1,8 +1,12 @@
+import { useState } from "react";
+
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
+import { ExternalSourceForm } from "./ExternalSourceForm";
 import { MediaPlayerCard } from "./MediaPlayerCard";
 import { MediaClassificationCard } from "./MediaClassificationCard";
+import { TranscriptPanel } from "./TranscriptPanel";
 import { RestrictedUserAccessCard } from "./RestrictedUserAccessCard";
 import { SearchPanel } from "./SearchPanel";
 import { TagManager } from "./TagManager";
@@ -45,6 +49,10 @@ type DashboardProps = {
   onCreateCategory: (name: string, parentId: number | null) => Promise<void>;
   onCreateRestrictedUser: (username: string, password: string, email: string) => Promise<void>;
   onCreateTag: (name: string) => Promise<void>;
+  onDeleteCategory: (id: number) => Promise<void>;
+  onDeleteMediaItem: (id: number) => Promise<void>;
+  onDeleteRestrictedUser: (id: number) => Promise<void>;
+  onDeleteTag: (id: number) => Promise<void>;
   onSelectMediaItem: (mediaItem: MediaItem) => void;
   onSelectCategory: (categoryId: number | null) => void;
   onSelectRestrictedUser: (userId: number | null) => void;
@@ -56,11 +64,27 @@ type DashboardProps = {
     mediaType: string,
     description: string,
   ) => Promise<void>;
+  onCreateExternalMediaItem: (
+    provider: string,
+    sourceUrl: string,
+    externalId: string,
+    sourceTitle: string,
+    authorName: string,
+    itemTitle: string,
+    mediaType: string,
+    description: string,
+  ) => Promise<void>;
+  onUpdateCategory: (id: number, data: { name: string; parent: number | null }) => Promise<void>;
+  onUpdateMediaItem: (
+    id: number,
+    data: { title: string; description: string; media_type: string },
+  ) => Promise<void>;
   onUpdateMediaItemAssignments: (
     mediaItemId: number,
     categoryIds: number[],
     tagIds: number[],
   ) => Promise<void>;
+  onUpdateTag: (id: number, data: { name: string }) => Promise<void>;
   onSaveVisibility: (
     userId: number,
     categoryIds: number[],
@@ -125,21 +149,58 @@ export function Dashboard({
   onCreateCategory,
   onCreateRestrictedUser,
   onCreateTag,
+  onDeleteCategory,
+  onDeleteMediaItem,
+  onDeleteRestrictedUser,
+  onDeleteTag,
   onChangeSearchQuery,
   onSelectCategory,
   onSelectMediaItem,
   onSelectRestrictedUser,
   onSelectTag,
   onUploadMediaItem,
+  onCreateExternalMediaItem,
+  onUpdateCategory,
+  onUpdateMediaItem,
   onUpdateMediaItemAssignments,
+  onUpdateTag,
   onSaveVisibility,
   onPersistProgress,
 }: DashboardProps) {
+  const [filterMediaType, setFilterMediaType] = useState<"all" | "audio" | "video">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "not_started" | "in_progress" | "completed"
+  >("all");
+  const [sortBy, setSortBy] = useState<"title" | "date" | "progress">("title");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const selectedProgressEntry =
     playbackEntries.find((entry) => entry.media_item === selectedMediaItem?.id) ?? null;
   const mediaTitleById = new Map(ownerMediaItems.map((item) => [item.id, item.title]));
   const progressFor = (item: MediaItem) =>
     playbackEntries.find((entry) => entry.media_item === item.id) ?? null;
+  const filteredItems = [...mediaItems]
+    .filter((item) => filterMediaType === "all" || item.media_type === filterMediaType)
+    .filter((item) => {
+      if (filterStatus === "all") {
+        return true;
+      }
+      const entry = progressFor(item);
+      const status = entry?.status ?? "not_started";
+      return status === filterStatus;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "title") {
+        cmp = a.title.localeCompare(b.title);
+      } else if (sortBy === "date") {
+        cmp = (a.published_at ?? a.id.toString()).localeCompare(b.published_at ?? b.id.toString());
+      } else if (sortBy === "progress") {
+        const pa = formatProgressPercent(progressFor(a)?.progress_percent ?? "0");
+        const pb = formatProgressPercent(progressFor(b)?.progress_percent ?? "0");
+        cmp = pa - pb;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   return (
     <>
@@ -185,11 +246,49 @@ export function Dashboard({
         <article className="card">
           <h2>Media Library</h2>
           <p className="muted">Current media items available in the selected context.</p>
-          {mediaItems.length === 0 ? (
+          <div className="library-filters">
+            <select
+              onChange={(event) => setFilterMediaType(event.target.value as "all" | "audio" | "video")}
+              value={filterMediaType}
+            >
+              <option value="all">All types</option>
+              <option value="audio">Audio</option>
+              <option value="video">Video</option>
+            </select>
+            <select
+              onChange={(event) =>
+                setFilterStatus(
+                  event.target.value as "all" | "not_started" | "in_progress" | "completed",
+                )
+              }
+              value={filterStatus}
+            >
+              <option value="all">All status</option>
+              <option value="not_started">Not started</option>
+              <option value="in_progress">In progress</option>
+              <option value="completed">Completed</option>
+            </select>
+            <select
+              onChange={(event) => setSortBy(event.target.value as "title" | "date" | "progress")}
+              value={sortBy}
+            >
+              <option value="title">Sort: Title</option>
+              <option value="date">Sort: Date</option>
+              <option value="progress">Sort: Progress</option>
+            </select>
+            <button
+              className="secondary-button sort-dir-button"
+              onClick={() => setSortDir((currentDir) => (currentDir === "asc" ? "desc" : "asc"))}
+              type="button"
+            >
+              {sortDir === "asc" ? "↑" : "↓"}
+            </button>
+          </div>
+          {filteredItems.length === 0 ? (
             <p className="empty-state">No media items yet.</p>
           ) : (
             <ul className="simple-list">
-              {mediaItems.map((item) => {
+              {filteredItems.map((item) => {
                 const playbackEntry = progressFor(item);
                 const progressPercent = playbackEntry
                   ? formatProgressPercent(playbackEntry.progress_percent)
@@ -232,9 +331,14 @@ export function Dashboard({
 
         <MediaPlayerCard
           mediaItem={selectedMediaItem}
+          onDeleteMediaItem={session.role === "owner" ? onDeleteMediaItem : undefined}
           onPersistProgress={onPersistProgress}
+          onUpdateMediaItem={session.role === "owner" ? onUpdateMediaItem : undefined}
           progressEntry={selectedProgressEntry}
         />
+        {session.role === "owner" && selectedMediaItem ? (
+          <TranscriptPanel mediaItem={selectedMediaItem} />
+        ) : null}
       </section>
 
       <section className="grid">
@@ -264,12 +368,21 @@ export function Dashboard({
           <h2 className="section-heading">Library Management</h2>
           <section className="grid">
             <UploadMediaForm error={createError} onSubmit={onUploadMediaItem} />
+            <ExternalSourceForm error={createError} onSubmit={onCreateExternalMediaItem} />
             <CategoryManager
               categories={categories}
               error={categoryError}
+              onDelete={onDeleteCategory}
               onSubmit={onCreateCategory}
+              onUpdate={onUpdateCategory}
             />
-            <TagManager error={tagError} onSubmit={onCreateTag} />
+            <TagManager
+              error={tagError}
+              onDelete={onDeleteTag}
+              onSubmit={onCreateTag}
+              onUpdate={onUpdateTag}
+              tags={tags}
+            />
             <MediaClassificationCard
               key={selectedMediaItem?.id ?? "none"}
               categories={categories}
@@ -289,6 +402,7 @@ export function Dashboard({
               mediaAssignments={mediaAssignments}
               mediaItems={ownerMediaItems}
               onCreateRestrictedUser={onCreateRestrictedUser}
+              onDeleteRestrictedUser={onDeleteRestrictedUser}
               onSaveVisibility={onSaveVisibility}
               onSelectRestrictedUser={onSelectRestrictedUser}
               restrictedUsers={restrictedUsers}
