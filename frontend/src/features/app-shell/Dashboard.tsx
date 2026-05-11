@@ -3,13 +3,17 @@ import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
 import { MediaPlayerCard } from "./MediaPlayerCard";
 import { MediaClassificationCard } from "./MediaClassificationCard";
+import { RestrictedUserAccessCard } from "./RestrictedUserAccessCard";
 import { SearchPanel } from "./SearchPanel";
 import { TagManager } from "./TagManager";
 import { UploadMediaForm } from "./UploadMediaForm";
 import type {
+  CategoryVisibilityAssignment,
   Category,
   MediaItem,
+  MediaItemVisibilityAssignment,
   PlaybackProgress,
+  RestrictedUser,
   SearchSuggestions,
   SessionState,
   Tag,
@@ -18,24 +22,33 @@ import type {
 type DashboardProps = {
   session: SessionState;
   categories: Category[];
+  categoryAssignments: CategoryVisibilityAssignment[];
   tags: Tag[];
+  mediaAssignments: MediaItemVisibilityAssignment[];
+  ownerMediaItems: MediaItem[];
   mediaItems: MediaItem[];
   playbackEntries: PlaybackProgress[];
   createError: string;
   categoryError: string;
   tagError: string;
   classificationError: string;
+  restrictedUserError: string;
+  visibilityError: string;
   searchQuery: string;
   searchSuggestions: SearchSuggestions | null;
   selectedMediaItem: MediaItem | null;
   selectedCategoryId: number | null;
+  selectedRestrictedUserId: number | null;
   selectedTagId: number | null;
+  restrictedUsers: RestrictedUser[];
   onLogout: () => Promise<void>;
   onCreateMediaItem: (title: string, mediaType: string, description: string) => Promise<void>;
   onCreateCategory: (name: string, parentId: number | null) => Promise<void>;
+  onCreateRestrictedUser: (username: string, password: string, email: string) => Promise<void>;
   onCreateTag: (name: string) => Promise<void>;
   onSelectMediaItem: (mediaItem: MediaItem) => void;
   onSelectCategory: (categoryId: number | null) => void;
+  onSelectRestrictedUser: (userId: number | null) => void;
   onSelectTag: (tagId: number | null) => void;
   onChangeSearchQuery: (value: string) => void;
   onUploadMediaItem: (
@@ -49,34 +62,49 @@ type DashboardProps = {
     categoryIds: number[],
     tagIds: number[],
   ) => Promise<void>;
+  onSaveVisibility: (
+    userId: number,
+    categoryIds: number[],
+    mediaItemIds: number[],
+  ) => Promise<void>;
   onPersistProgress: (mediaItemId: number, currentTime: number, duration: number) => Promise<void>;
 };
 
 export function Dashboard({
   session,
   categories,
+  categoryAssignments,
   tags,
+  mediaAssignments,
+  ownerMediaItems,
   mediaItems,
   playbackEntries,
   createError,
   categoryError,
   tagError,
   classificationError,
+  restrictedUserError,
+  visibilityError,
   searchQuery,
   searchSuggestions,
   selectedMediaItem,
   selectedCategoryId,
+  selectedRestrictedUserId,
   selectedTagId,
+  restrictedUsers,
   onLogout,
   onCreateMediaItem,
   onCreateCategory,
+  onCreateRestrictedUser,
   onCreateTag,
   onChangeSearchQuery,
   onSelectCategory,
   onSelectMediaItem,
+  onSelectRestrictedUser,
   onSelectTag,
   onUploadMediaItem,
   onUpdateMediaItemAssignments,
+  onSaveVisibility,
   onPersistProgress,
 }: DashboardProps) {
   const selectedProgressEntry =
@@ -188,6 +216,19 @@ export function Dashboard({
               mediaItem={selectedMediaItem}
               onSubmit={onUpdateMediaItemAssignments}
               tags={tags}
+            />
+            <RestrictedUserAccessCard
+              categories={categories}
+              categoryAssignments={categoryAssignments}
+              mediaAssignments={mediaAssignments}
+              mediaItems={ownerMediaItems}
+              onCreateRestrictedUser={onCreateRestrictedUser}
+              onSaveVisibility={onSaveVisibility}
+              onSelectRestrictedUser={onSelectRestrictedUser}
+              restrictedUsers={restrictedUsers}
+              selectedRestrictedUserId={selectedRestrictedUserId}
+              userError={restrictedUserError}
+              visibilityError={visibilityError}
             />
             <article className="card">
               <h2>Create Basic Media Item</h2>

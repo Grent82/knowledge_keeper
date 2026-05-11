@@ -42,3 +42,27 @@ def test_login_rejects_invalid_credentials():
     )
 
     assert response.status_code == 400
+
+
+def test_owner_can_create_restricted_user():
+    owner = User.objects.create_user(
+        username="owner-manage-users",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(
+        "/api/auth/restricted-users",
+        {
+            "username": "guest-user",
+            "password": "secret",
+            "email": "guest@example.com",
+        },
+        format="json",
+    )
+
+    assert response.status_code == 201
+    assert response.data["username"] == "guest-user"
+    assert response.data["role"] == UserRole.RESTRICTED_USER

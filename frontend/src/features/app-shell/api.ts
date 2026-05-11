@@ -1,7 +1,10 @@
 import type {
+  CategoryVisibilityAssignment,
   Category,
   MediaItem,
+  MediaItemVisibilityAssignment,
   PlaybackProgress,
+  RestrictedUser,
   SearchSuggestions,
   SessionState,
   Tag,
@@ -69,6 +72,10 @@ export function fetchSession() {
   return request<SessionState>("/api/auth/session");
 }
 
+export function fetchRestrictedUsers() {
+  return request<RestrictedUser[]>("/api/auth/restricted-users");
+}
+
 export function login(username: string, password: string) {
   return request<SessionState>("/api/auth/login", {
     method: "POST",
@@ -96,6 +103,13 @@ export function fetchSearchSuggestions(query: string) {
   return request<SearchSuggestions>(`/api/media/search?q=${encodeURIComponent(query)}`);
 }
 
+export function createRestrictedUser(username: string, password: string, email: string) {
+  return request<RestrictedUser>("/api/auth/restricted-users", {
+    method: "POST",
+    body: JSON.stringify({ username, password, email }),
+  });
+}
+
 export function createCategory(name: string, parent: number | null) {
   return request<Category>("/api/media/categories", {
     method: "POST",
@@ -115,6 +129,40 @@ export function createTag(name: string) {
 
 export function fetchPlaybackProgress() {
   return request<PlaybackProgress[]>("/api/playback/progress");
+}
+
+export function fetchCategoryVisibilityAssignments() {
+  return request<CategoryVisibilityAssignment[]>("/api/access/category-assignments");
+}
+
+export function fetchMediaVisibilityAssignments() {
+  return request<MediaItemVisibilityAssignment[]>("/api/access/media-assignments");
+}
+
+export function createCategoryVisibilityAssignment(userId: number, categoryId: number) {
+  return request<CategoryVisibilityAssignment>("/api/access/category-assignments", {
+    method: "POST",
+    body: JSON.stringify({ user: userId, category: categoryId }),
+  });
+}
+
+export function createMediaVisibilityAssignment(userId: number, mediaItemId: number) {
+  return request<MediaItemVisibilityAssignment>("/api/access/media-assignments", {
+    method: "POST",
+    body: JSON.stringify({ user: userId, media_item: mediaItemId }),
+  });
+}
+
+export function deleteCategoryVisibilityAssignment(assignmentId: number) {
+  return request<void>(`/api/access/category-assignments/${assignmentId}`, {
+    method: "DELETE",
+  });
+}
+
+export function deleteMediaVisibilityAssignment(assignmentId: number) {
+  return request<void>(`/api/access/media-assignments/${assignmentId}`, {
+    method: "DELETE",
+  });
 }
 
 export function createMediaItem(title: string, mediaType: string, description: string) {

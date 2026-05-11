@@ -1,6 +1,8 @@
 from django.contrib.auth import authenticate, login, logout
 from rest_framework import serializers
 
+from .models import User, UserRole
+
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -43,3 +45,20 @@ class SessionSerializer(serializers.Serializer):
 
 def logout_user(request) -> None:
     logout(request)
+
+
+class RestrictedUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "password", "email", "is_active", "role"]
+        read_only_fields = ["id", "role"]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        return User.objects.create_user(
+            password=password,
+            role=UserRole.RESTRICTED_USER,
+            **validated_data,
+        )

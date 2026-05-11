@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 
 import {
+  createCategoryVisibilityAssignment,
   createCategory,
   createMediaItemFromAsset,
+  createMediaVisibilityAssignment,
   createPlaybackProgress,
   createMediaItem,
+  createRestrictedUser,
   createTag,
+  deleteCategoryVisibilityAssignment,
+  deleteMediaVisibilityAssignment,
+  fetchCategoryVisibilityAssignments,
   fetchCategories,
+  fetchMediaVisibilityAssignments,
   fetchMediaItems,
   fetchPlaybackProgress,
+  fetchRestrictedUsers,
   fetchSearchSuggestions,
   fetchSession,
   fetchTags,
@@ -21,9 +29,12 @@ import {
 import { Dashboard } from "./Dashboard";
 import { LoginForm } from "./LoginForm";
 import type {
+  CategoryVisibilityAssignment,
   Category,
   MediaItem,
+  MediaItemVisibilityAssignment,
   PlaybackProgress,
+  RestrictedUser,
   SearchSuggestions,
   SessionState,
   Tag,
@@ -79,17 +90,23 @@ export function AppScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+  const [restrictedUsers, setRestrictedUsers] = useState<RestrictedUser[]>([]);
+  const [categoryAssignments, setCategoryAssignments] = useState<CategoryVisibilityAssignment[]>([]);
+  const [mediaAssignments, setMediaAssignments] = useState<MediaItemVisibilityAssignment[]>([]);
   const [playbackEntries, setPlaybackEntries] = useState<PlaybackProgress[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestions | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
+  const [selectedRestrictedUserId, setSelectedRestrictedUserId] = useState<number | null>(null);
   const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
   const [loginError, setLoginError] = useState("");
   const [createError, setCreateError] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [tagError, setTagError] = useState("");
   const [classificationError, setClassificationError] = useState("");
+  const [restrictedUserError, setRestrictedUserError] = useState("");
+  const [visibilityError, setVisibilityError] = useState("");
 
   useEffect(() => {
     void refreshSession();
@@ -112,16 +129,35 @@ export function AppScreen() {
     return () => window.clearTimeout(timeoutId);
   }, [searchQuery, session.is_authenticated]);
 
+  useEffect(() => {
+    if (session.role !== "owner") {
+      setSelectedRestrictedUserId(null);
+      return;
+    }
+
+    if (restrictedUsers.length === 0) {
+      setSelectedRestrictedUserId(null);
+      return;
+    }
+
+    setSelectedRestrictedUserId((currentSelected) => {
+      if (currentSelected && restrictedUsers.some((user) => user.id === currentSelected)) {
+        return currentSelected;
+      }
+      return restrictedUsers[0]?.id ?? null;
+    });
+  }, [restrictedUsers, session.role]);
+
   async function refreshSession() {
     const nextSession = await fetchSession();
     setSession(nextSession);
 
     if (nextSession.is_authenticated) {
-      await refreshData();
+      await refreshData(nextSession);
     }
   }
 
-  async function refreshData() {
+  async function refreshData(currentSession: SessionState = session) {
     const [items, progress, nextCategories, nextTags] = await Promise.all([
       fetchMediaItems(),
       fetchPlaybackProgress(),
@@ -138,6 +174,22 @@ export function AppScreen() {
       }
       return items.find((item) => item.id === currentSelected.id) ?? items[0] ?? null;
     });
+
+    if (currentSession.role === "owner") {
+      const [nextRestrictedUsers, nextCategoryAssignments, nextMediaAssignments] = await Promise.all([
+        fetchRestrictedUsers(),
+        fetchCategoryVisibilityAssignments(),
+        fetchMediaVisibilityAssignments(),
+      ]);
+      setRestrictedUsers(nextRestrictedUsers);
+      setCategoryAssignments(nextCategoryAssignments);
+      setMediaAssignments(nextMediaAssignments);
+      return;
+    }
+
+    setRestrictedUsers([]);
+    setCategoryAssignments([]);
+    setMediaAssignments([]);
   }
 
   const visibleCategoryIds = collectVisibleCategoryIds(categories, selectedCategoryId);
@@ -170,7 +222,7 @@ export function AppScreen() {
       setLoginError("");
       const nextSession = await login(username, password);
       setSession(nextSession);
-      await refreshData();
+      await refreshData(nextSession);
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : "Login failed.");
     }
@@ -183,10 +235,14 @@ export function AppScreen() {
     setPlaybackEntries([]);
     setCategories([]);
     setTags([]);
+    setRestrictedUsers([]);
+    setCategoryAssignments([]);
+    setMediaAssignments([]);
     setSearchQuery("");
     setSearchSuggestions(null);
     setSelectedCategoryId(null);
     setSelectedTagId(null);
+    setSelectedRestrictedUserId(null);
     setSelectedMediaItem(null);
   }
 
@@ -268,6 +324,60 @@ export function AppScreen() {
     }
   }
 
+  async function handleCreateRestrictedUser(username: string, password: string, email: string) {
+    try {
+      setRestrictedUserError("");
+      const restrictedUser = await createRestrictedUser(username, password, email);
+      await refreshData();
+      setSelectedRestrictedUserId(restrictedUser.id);
+    } catch (error) {
+      setRestrictedUserError(
+        error instanceof Error ? error.message : "Restricted user creation failed.",
+      );
+    }
+  }
+
+  async function handleSaveVisibility(
+    userId: number,
+    nextCategoryIds: number[],
+    nextMediaItemIds: number[],
+  ) {
+    try {
+      setVisibilityError("");
+
+      const currentCategoryAssignments = categoryAssignments.filter(
+        (assignment) => assignment.user === userId,
+      );
+      const currentMediaAssignments = mediaAssignments.filter((assignment) => assignment.user === userId);
+      const currentCategoryIds = new Set(currentCategoryAssignments.map((assignment) => assignment.category));
+      const currentMediaIds = new Set(currentMediaAssignments.map((assignment) => assignment.media_item));
+      const desiredCategoryIds = new Set(nextCategoryIds);
+      const desiredMediaIds = new Set(nextMediaItemIds);
+
+      await Promise.all([
+        ...currentCategoryAssignments
+          .filter((assignment) => !desiredCategoryIds.has(assignment.category))
+          .map((assignment) => deleteCategoryVisibilityAssignment(assignment.id)),
+        ...currentMediaAssignments
+          .filter((assignment) => !desiredMediaIds.has(assignment.media_item))
+          .map((assignment) => deleteMediaVisibilityAssignment(assignment.id)),
+      ]);
+
+      await Promise.all([
+        ...nextCategoryIds
+          .filter((categoryId) => !currentCategoryIds.has(categoryId))
+          .map((categoryId) => createCategoryVisibilityAssignment(userId, categoryId)),
+        ...nextMediaItemIds
+          .filter((mediaItemId) => !currentMediaIds.has(mediaItemId))
+          .map((mediaItemId) => createMediaVisibilityAssignment(userId, mediaItemId)),
+      ]);
+
+      await refreshData();
+    } catch (error) {
+      setVisibilityError(error instanceof Error ? error.message : "Visibility update failed.");
+    }
+  }
+
   if (!session.is_authenticated) {
     return (
       <>
@@ -287,31 +397,41 @@ export function AppScreen() {
     <Dashboard
       createError={createError}
       categoryError={categoryError}
+      categoryAssignments={categoryAssignments}
       classificationError={classificationError}
       categories={categories}
+      mediaAssignments={mediaAssignments}
+      ownerMediaItems={mediaItems}
       mediaItems={visibleMediaItems}
       onCreateMediaItem={handleCreateMediaItem}
       onCreateCategory={handleCreateCategory}
+      onCreateRestrictedUser={handleCreateRestrictedUser}
       onCreateTag={handleCreateTag}
       onChangeSearchQuery={setSearchQuery}
       onLogout={handleLogout}
       onPersistProgress={handlePersistProgress}
+      onSaveVisibility={handleSaveVisibility}
       onSelectCategory={(categoryId) => {
         setSelectedCategoryId(categoryId);
       }}
       onSelectMediaItem={setSelectedMediaItem}
+      onSelectRestrictedUser={setSelectedRestrictedUserId}
       onSelectTag={setSelectedTagId}
       onUpdateMediaItemAssignments={handleUpdateMediaItemAssignments}
       onUploadMediaItem={handleUploadMediaItem}
       playbackEntries={playbackEntries}
+      restrictedUserError={restrictedUserError}
+      restrictedUsers={restrictedUsers}
       searchQuery={searchQuery}
       searchSuggestions={searchSuggestions}
       selectedCategoryId={selectedCategoryId}
+      selectedRestrictedUserId={selectedRestrictedUserId}
       selectedTagId={selectedTagId}
       selectedMediaItem={selectedMediaItem}
       session={session}
       tagError={tagError}
       tags={tags}
+      visibilityError={visibilityError}
     />
   );
 }

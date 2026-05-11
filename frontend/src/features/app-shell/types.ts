@@ -20,6 +20,26 @@ export type Tag = {
   name: string;
 };
 
+export type RestrictedUser = {
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  role: string;
+};
+
+export type CategoryVisibilityAssignment = {
+  id: number;
+  user: number;
+  category: number;
+};
+
+export type MediaItemVisibilityAssignment = {
+  id: number;
+  user: number;
+  media_item: number;
+};
+
 export type SessionState = {
   is_authenticated: boolean;
   username: string;
