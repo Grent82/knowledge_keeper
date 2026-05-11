@@ -48,6 +48,8 @@ Das startet:
 
 `Ctrl+C` beendet beide Prozesse zusammen.
 
+Falls das Frontend auf `3001`, `3002` oder `3003` startet, ist das lokale Django-Setup bereits als vertrauenswuerdige CSRF-Origin vorkonfiguriert.
+
 ## Manuelle Alternative
 
 1. Backend starten
