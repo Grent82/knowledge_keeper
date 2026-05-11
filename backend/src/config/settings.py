@@ -129,6 +129,12 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 TRANSCRIPTION_PROVIDER = os.getenv("TRANSCRIPTION_PROVIDER", "stub")
 
+# faster-whisper settings
+WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "small")  # tiny, base, small, medium, large-v3
+WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
+WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(BASE_DIR.parent / "var" / "whisper_models"))
+
 # AI / Summary provider
 SUMMARY_PROVIDER = os.getenv("SUMMARY_PROVIDER", "stub")
 AI_HUB_BASE_URL = os.getenv("AI_HUB_BASE_URL", "")

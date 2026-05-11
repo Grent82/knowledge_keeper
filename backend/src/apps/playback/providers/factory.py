@@ -4,6 +4,13 @@ from ..ports import SummaryProvider, TranscriptionProvider
 
 
 def get_transcription_provider() -> TranscriptionProvider:
+    provider = getattr(settings, "TRANSCRIPTION_PROVIDER", "stub")
+
+    if provider == "faster_whisper":
+        from .faster_whisper_provider import make_faster_whisper_provider
+
+        return make_faster_whisper_provider()
+
     from .stub import StubTranscriptionProvider
 
     return StubTranscriptionProvider()

@@ -6,7 +6,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/backend/src
 
-RUN pip install --upgrade pip --no-cache-dir
+RUN pip install --upgrade pip --no-cache-dir && \
+    apt-get update && apt-get install -y --no-install-recommends ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install dependencies before copying source for layer caching
 COPY backend/pyproject.toml backend/

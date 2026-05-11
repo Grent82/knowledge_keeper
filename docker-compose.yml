@@ -29,6 +29,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./var/media:/app/var/media
+      - ./var/whisper_models:/app/var/whisper_models
     ports:
       - "9000:9000"
     env_file: .env.docker
@@ -52,6 +53,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./var/media:/app/var/media
+      - ./var/whisper_models:/app/var/whisper_models
     env_file: .env.docker
     environment:
       DATABASE_URL: postgresql://knowledge_keeper:knowledge_keeper@postgres:5432/knowledge_keeper
