@@ -157,6 +157,10 @@ button {
   margin: 18px 0 0;
 }
 
+.compact-list {
+  margin-top: 10px;
+}
+
 .simple-list li {
   display: grid;
   gap: 4px;
@@ -171,6 +175,81 @@ button {
   color: #17202a;
   text-align: left;
   cursor: pointer;
+}
+
+.tree-card,
+.search-card {
+  align-self: start;
+}
+
+.tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tree-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tree-list .tree-list {
+  margin-top: 8px;
+  padding-left: 16px;
+}
+
+.tree-button {
+  border: 0;
+  background: transparent;
+  color: #17202a;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.active-tree-button {
+  color: #9b5d2e;
+  font-weight: 700;
+}
+
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.breadcrumb-button {
+  border: 0;
+  background: transparent;
+  color: #6d7a86;
+  padding: 0;
+  cursor: pointer;
+}
+
+.search-input {
+  width: 100%;
+  border: 1px solid rgba(23, 32, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  margin-top: 12px;
+}
+
+.suggestion-layout {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.suggestion-group h3 {
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .media-player {

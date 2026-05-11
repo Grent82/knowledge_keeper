@@ -1,4 +1,11 @@
-import type { MediaItem, PlaybackProgress, SessionState } from "./types";
+import type {
+  Category,
+  MediaItem,
+  PlaybackProgress,
+  SearchSuggestions,
+  SessionState,
+  Tag,
+} from "./types";
 
 function readCookie(name: string): string {
   const cookies = document.cookie.split(";").map((value) => value.trim());
@@ -75,6 +82,18 @@ export function logout() {
 
 export function fetchMediaItems() {
   return request<MediaItem[]>("/api/media/items");
+}
+
+export function fetchCategories() {
+  return request<Category[]>("/api/media/categories");
+}
+
+export function fetchTags() {
+  return request<Tag[]>("/api/media/tags");
+}
+
+export function fetchSearchSuggestions(query: string) {
+  return request<SearchSuggestions>(`/api/media/search?q=${encodeURIComponent(query)}`);
 }
 
 export function fetchPlaybackProgress() {

@@ -1,3 +1,4 @@
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
@@ -5,6 +6,7 @@ from .views import (
     ExternalSourceViewSet,
     MediaAssetViewSet,
     MediaItemViewSet,
+    SearchSuggestionView,
     TagViewSet,
 )
 
@@ -15,4 +17,7 @@ router.register("sources", ExternalSourceViewSet, basename="external-source")
 router.register("assets", MediaAssetViewSet, basename="media-asset")
 router.register("items", MediaItemViewSet, basename="media-item")
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("search", SearchSuggestionView.as_view(), name="media-search-suggestions"),
+    *router.urls,
+]

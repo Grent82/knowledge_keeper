@@ -114,3 +114,9 @@ class MediaItemSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "owner", "created_at", "updated_at"]
+
+
+class SearchSuggestionSerializer(serializers.Serializer):
+    categories = CategorySerializer(many=True)
+    tags = TagSerializer(many=True)
+    media_items = MediaItemSerializer(many=True)

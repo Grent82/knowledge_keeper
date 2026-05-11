@@ -9,6 +9,17 @@ export type MediaAsset = {
   height: number | null;
 };
 
+export type Category = {
+  id: number;
+  name: string;
+  parent: number | null;
+};
+
+export type Tag = {
+  id: number;
+  name: string;
+};
+
 export type SessionState = {
   is_authenticated: boolean;
   username: string;
@@ -24,6 +35,8 @@ export type MediaItem = {
   owner: number;
   asset: number | null;
   asset_detail: MediaAsset | null;
+  categories: number[];
+  tags: number[];
 };
 
 export type PlaybackProgress = {
@@ -32,4 +45,10 @@ export type PlaybackProgress = {
   status: string;
   position_seconds: number;
   progress_percent: string;
+};
+
+export type SearchSuggestions = {
+  categories: Category[];
+  tags: Tag[];
+  media_items: MediaItem[];
 };

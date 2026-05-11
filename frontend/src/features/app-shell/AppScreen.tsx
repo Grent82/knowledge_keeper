@@ -4,8 +4,10 @@ import {
   createMediaItemFromAsset,
   createPlaybackProgress,
   createMediaItem,
+  fetchCategories,
   fetchMediaItems,
   fetchPlaybackProgress,
+  fetchSearchSuggestions,
   fetchSession,
   login,
   logout,
@@ -14,7 +16,13 @@ import {
 } from "./api";
 import { Dashboard } from "./Dashboard";
 import { LoginForm } from "./LoginForm";
-import type { MediaItem, PlaybackProgress, SessionState } from "./types";
+import type {
+  Category,
+  MediaItem,
+  PlaybackProgress,
+  SearchSuggestions,
+  SessionState,
+} from "./types";
 
 const anonymousSession: SessionState = {
   is_authenticated: false,
@@ -22,10 +30,54 @@ const anonymousSession: SessionState = {
   role: "",
 };
 
+function collectVisibleCategoryIds(
+  categories: Category[],
+  selectedCategoryId: number | null,
+): Set<number> | null {
+  if (selectedCategoryId === null) {
+    return null;
+  }
+
+  const childrenByParent = new Map<number, number[]>();
+
+  for (const category of categories) {
+    if (category.parent === null) {
+      continue;
+    }
+
+    const currentChildren = childrenByParent.get(category.parent) ?? [];
+    currentChildren.push(category.id);
+    childrenByParent.set(category.parent, currentChildren);
+  }
+
+  const collectedIds = new Set<number>();
+  const pendingIds = [selectedCategoryId];
+
+  while (pendingIds.length > 0) {
+    const nextId = pendingIds.pop();
+    if (nextId === undefined || collectedIds.has(nextId)) {
+      continue;
+    }
+
+    collectedIds.add(nextId);
+
+    for (const childId of childrenByParent.get(nextId) ?? []) {
+      pendingIds.push(childId);
+    }
+  }
+
+  return collectedIds;
+}
+
 export function AppScreen() {
   const [session, setSession] = useState<SessionState>(anonymousSession);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [playbackEntries, setPlaybackEntries] = useState<PlaybackProgress[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestions | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
   const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
   const [loginError, setLoginError] = useState("");
   const [createError, setCreateError] = useState("");
@@ -33,6 +85,23 @@ export function AppScreen() {
   useEffect(() => {
     void refreshSession();
   }, []);
+
+  useEffect(() => {
+    if (!session.is_authenticated) {
+      return;
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchSuggestions(null);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void fetchSearchSuggestions(searchQuery).then(setSearchSuggestions);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery, session.is_authenticated]);
 
   async function refreshSession() {
     const nextSession = await fetchSession();
@@ -44,9 +113,14 @@ export function AppScreen() {
   }
 
   async function refreshData() {
-    const [items, progress] = await Promise.all([fetchMediaItems(), fetchPlaybackProgress()]);
+    const [items, progress, nextCategories] = await Promise.all([
+      fetchMediaItems(),
+      fetchPlaybackProgress(),
+      fetchCategories(),
+    ]);
     setMediaItems(items);
     setPlaybackEntries(progress);
+    setCategories(nextCategories);
     setSelectedMediaItem((currentSelected) => {
       if (!currentSelected) {
         return items[0] ?? null;
@@ -54,6 +128,31 @@ export function AppScreen() {
       return items.find((item) => item.id === currentSelected.id) ?? items[0] ?? null;
     });
   }
+
+  const visibleCategoryIds = collectVisibleCategoryIds(categories, selectedCategoryId);
+  const visibleMediaItems = mediaItems.filter((item) => {
+    const categoryMatch =
+      visibleCategoryIds === null ||
+      item.categories.some((categoryId) => visibleCategoryIds.has(categoryId));
+    const tagMatch = selectedTagId === null || item.tags.includes(selectedTagId);
+    return categoryMatch && tagMatch;
+  });
+
+  useEffect(() => {
+    if (visibleMediaItems.length === 0) {
+      setSelectedMediaItem(null);
+      return;
+    }
+
+    if (!selectedMediaItem) {
+      setSelectedMediaItem(visibleMediaItems[0] ?? null);
+      return;
+    }
+
+    if (!visibleMediaItems.some((item) => item.id === selectedMediaItem.id)) {
+      setSelectedMediaItem(visibleMediaItems[0] ?? null);
+    }
+  }, [selectedMediaItem, visibleMediaItems]);
 
   async function handleLogin(username: string, password: string) {
     try {
@@ -71,6 +170,11 @@ export function AppScreen() {
     setSession(anonymousSession);
     setMediaItems([]);
     setPlaybackEntries([]);
+    setCategories([]);
+    setSearchQuery("");
+    setSearchSuggestions(null);
+    setSelectedCategoryId(null);
+    setSelectedTagId(null);
     setSelectedMediaItem(null);
   }
 
@@ -133,13 +237,22 @@ export function AppScreen() {
   return (
     <Dashboard
       createError={createError}
-      mediaItems={mediaItems}
+      categories={categories}
+      mediaItems={visibleMediaItems}
       onCreateMediaItem={handleCreateMediaItem}
+      onChangeSearchQuery={setSearchQuery}
       onLogout={handleLogout}
       onPersistProgress={handlePersistProgress}
+      onSelectCategory={(categoryId) => {
+        setSelectedCategoryId(categoryId);
+      }}
       onSelectMediaItem={setSelectedMediaItem}
+      onSelectTag={setSelectedTagId}
       onUploadMediaItem={handleUploadMediaItem}
       playbackEntries={playbackEntries}
+      searchQuery={searchQuery}
+      searchSuggestions={searchSuggestions}
+      selectedCategoryId={selectedCategoryId}
       selectedMediaItem={selectedMediaItem}
       session={session}
     />

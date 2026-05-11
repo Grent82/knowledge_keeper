@@ -1,16 +1,32 @@
+import { Breadcrumbs } from "./Breadcrumbs";
+import { CategoryTree } from "./CategoryTree";
 import { MediaPlayerCard } from "./MediaPlayerCard";
+import { SearchPanel } from "./SearchPanel";
 import { UploadMediaForm } from "./UploadMediaForm";
-import type { MediaItem, PlaybackProgress, SessionState } from "./types";
+import type {
+  Category,
+  MediaItem,
+  PlaybackProgress,
+  SearchSuggestions,
+  SessionState,
+} from "./types";
 
 type DashboardProps = {
   session: SessionState;
+  categories: Category[];
   mediaItems: MediaItem[];
   playbackEntries: PlaybackProgress[];
   createError: string;
+  searchQuery: string;
+  searchSuggestions: SearchSuggestions | null;
   selectedMediaItem: MediaItem | null;
+  selectedCategoryId: number | null;
   onLogout: () => Promise<void>;
   onCreateMediaItem: (title: string, mediaType: string, description: string) => Promise<void>;
   onSelectMediaItem: (mediaItem: MediaItem) => void;
+  onSelectCategory: (categoryId: number | null) => void;
+  onSelectTag: (tagId: number) => void;
+  onChangeSearchQuery: (value: string) => void;
   onUploadMediaItem: (
     file: File,
     title: string,
@@ -22,13 +38,20 @@ type DashboardProps = {
 
 export function Dashboard({
   session,
+  categories,
   mediaItems,
   playbackEntries,
   createError,
+  searchQuery,
+  searchSuggestions,
   selectedMediaItem,
+  selectedCategoryId,
   onLogout,
   onCreateMediaItem,
+  onChangeSearchQuery,
+  onSelectCategory,
   onSelectMediaItem,
+  onSelectTag,
   onUploadMediaItem,
   onPersistProgress,
 }: DashboardProps) {
@@ -50,10 +73,33 @@ export function Dashboard({
         </div>
       </section>
 
+      <Breadcrumbs
+        categories={categories}
+        onSelectCategory={onSelectCategory}
+        selectedCategoryId={selectedCategoryId}
+      />
+
       <section className="grid">
+        <CategoryTree
+          categories={categories}
+          onSelectCategory={onSelectCategory}
+          selectedCategoryId={selectedCategoryId}
+        />
+
+        <SearchPanel
+          onChangeQuery={onChangeSearchQuery}
+          onSelectCategory={(categoryId) => {
+            onSelectCategory(categoryId);
+          }}
+          onSelectMediaItem={onSelectMediaItem}
+          onSelectTag={onSelectTag}
+          query={searchQuery}
+          suggestions={searchSuggestions}
+        />
+
         <article className="card">
           <h2>Media Library</h2>
-          <p className="muted">Current media items available to this account.</p>
+          <p className="muted">Current media items available in the selected context.</p>
           {mediaItems.length === 0 ? (
             <p className="empty-state">No media items yet.</p>
           ) : (

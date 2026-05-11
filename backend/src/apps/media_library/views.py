@@ -1,5 +1,8 @@
+from django.db.models import Q
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from apps.access_control.services import visible_categories_queryset, visible_media_items_queryset
@@ -11,6 +14,7 @@ from .serializers import (
     ExternalSourceSerializer,
     MediaAssetSerializer,
     MediaItemSerializer,
+    SearchSuggestionSerializer,
     TagSerializer,
 )
 
@@ -91,3 +95,37 @@ class MediaItemViewSet(ModelViewSet):
                 message="Only owner accounts can create media items.",
             )
         serializer.save(owner=self.request.user)
+
+
+class SearchSuggestionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        visible_categories = visible_categories_queryset(request.user)
+        visible_media_items = visible_media_items_queryset(request.user)
+        visible_tags = (
+            Tag.objects.filter(media_items__in=visible_media_items).distinct()
+            if not request.user.is_owner
+            else Tag.objects.filter(created_by=request.user)
+        )
+
+        if query:
+            categories = visible_categories.filter(name__icontains=query)[:8]
+            tags = visible_tags.filter(name__icontains=query)[:8]
+            media_items = visible_media_items.filter(
+                Q(title__icontains=query) | Q(description__icontains=query)
+            ).select_related("asset", "external_source")[:8]
+        else:
+            categories = visible_categories[:8]
+            tags = visible_tags[:8]
+            media_items = visible_media_items.select_related("asset", "external_source")[:8]
+
+        serializer = SearchSuggestionSerializer(
+            {
+                "categories": categories,
+                "tags": tags,
+                "media_items": media_items,
+            }
+        )
+        return Response(serializer.data)

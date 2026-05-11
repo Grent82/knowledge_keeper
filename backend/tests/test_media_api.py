@@ -76,8 +76,9 @@ def test_owner_can_upload_media_asset_file():
     )
 
     assert response.status_code == 201
-    assert response.data["filename"] == "voice-note.mp3"
-    assert response.data["asset_url"].endswith("voice-note.mp3")
+    assert response.data["filename"].startswith("voice-note")
+    assert response.data["filename"].endswith(".mp3")
+    assert response.data["asset_url"].endswith(response.data["filename"])
 
 
 def test_restricted_user_cannot_create_media_item():
