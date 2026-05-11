@@ -31,6 +31,7 @@ def _resolve_audio_path(media_item) -> tuple[str, str | None]:
                 "outtmpl": f"{tmpdir}/audio.%(ext)s",
                 "quiet": True,
                 "no_warnings": True,
+                "check_formats": "selected",
                 "extractor_args": {"youtube": {"player_client": ["ios", "web"]}},
                 "http_headers": {
                     "User-Agent": (
