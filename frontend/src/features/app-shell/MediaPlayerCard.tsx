@@ -37,7 +37,7 @@ export function MediaPlayerCard({
 
   if (!mediaItem) {
     return (
-      <article className="card detail-card">
+      <article className="card detail-card player-card">
         <h2>Media Detail</h2>
         <p className="empty-state">Select a media item to inspect and play it.</p>
       </article>
@@ -74,7 +74,7 @@ export function MediaPlayerCard({
   };
 
   return (
-    <article className="card detail-card">
+    <article className="card detail-card player-card">
       <h2>{mediaItem.title}</h2>
       <p className="muted">{mediaItem.description || "No description provided."}</p>
       <p className="muted">

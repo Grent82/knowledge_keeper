@@ -1,3 +1,5 @@
+import { SubmitButton } from "./SubmitButton";
+import { buildCategoryLabel } from "./categoryUtils";
 import type {
   Category,
   CategoryVisibilityAssignment,
@@ -23,23 +25,6 @@ type RestrictedUserAccessCardProps = {
     mediaItemIds: number[],
   ) => Promise<void>;
 };
-
-function buildCategoryLabel(categories: Category[], category: Category): string {
-  const categoryById = new Map(categories.map((entry) => [entry.id, entry]));
-  const path: string[] = [category.name];
-  let currentParentId = category.parent;
-
-  while (currentParentId !== null) {
-    const parent = categoryById.get(currentParentId);
-    if (!parent) {
-      break;
-    }
-    path.unshift(parent.name);
-    currentParentId = parent.parent;
-  }
-
-  return path.join(" / ");
-}
 
 export function RestrictedUserAccessCard({
   restrictedUsers,
@@ -102,7 +87,7 @@ export function RestrictedUserAccessCard({
           <input name="email" type="email" />
         </label>
         {userError ? <p className="error-text">{userError}</p> : null}
-        <button type="submit">Create restricted user</button>
+        <SubmitButton pendingLabel="Creating...">Create restricted user</SubmitButton>
       </form>
 
       <div className="field">
@@ -186,7 +171,7 @@ export function RestrictedUserAccessCard({
           </div>
 
           {visibilityError ? <p className="error-text">{visibilityError}</p> : null}
-          <button type="submit">Save visibility</button>
+          <SubmitButton>Save visibility</SubmitButton>
         </form>
       ) : null}
     </article>

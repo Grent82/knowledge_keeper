@@ -1,3 +1,7 @@
+import { useState } from "react";
+
+import { SubmitButton } from "./SubmitButton";
+import { buildCategoryLabel } from "./categoryUtils";
 import type { Category } from "./types";
 
 type CategoryManagerProps = {
@@ -6,28 +10,12 @@ type CategoryManagerProps = {
   onSubmit: (name: string, parentId: number | null) => Promise<void>;
 };
 
-function buildCategoryLabel(categories: Category[], category: Category): string {
-  const categoryById = new Map(categories.map((entry) => [entry.id, entry]));
-  const path: string[] = [category.name];
-  let currentParentId = category.parent;
-
-  while (currentParentId !== null) {
-    const parent = categoryById.get(currentParentId);
-    if (!parent) {
-      break;
-    }
-    path.unshift(parent.name);
-    currentParentId = parent.parent;
-  }
-
-  return path.join(" / ");
-}
-
 export function CategoryManager({
   categories,
   error,
   onSubmit,
 }: CategoryManagerProps) {
+  const [resetKey, setResetKey] = useState(0);
   const sortedCategories = [...categories].sort((left, right) =>
     buildCategoryLabel(categories, left).localeCompare(buildCategoryLabel(categories, right)),
   );
@@ -37,6 +25,7 @@ export function CategoryManager({
       <h2>Manage Categories</h2>
       <p className="muted">Create hierarchical categories for navigation and filtering.</p>
       <form
+        key={resetKey}
         className="stack-form"
         action={async (formData) => {
           const name = String(formData.get("name") ?? "").trim();
@@ -48,6 +37,7 @@ export function CategoryManager({
           }
 
           await onSubmit(name, Number.isNaN(parentId) ? null : parentId);
+          setResetKey((currentKey) => currentKey + 1);
         }}
       >
         <label className="field">
@@ -66,7 +56,7 @@ export function CategoryManager({
           </select>
         </label>
         {error ? <p className="error-text">{error}</p> : null}
-        <button type="submit">Create category</button>
+        <SubmitButton pendingLabel="Creating...">Create category</SubmitButton>
       </form>
     </article>
   );

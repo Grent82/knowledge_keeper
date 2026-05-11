@@ -1,3 +1,5 @@
+import { SubmitButton } from "./SubmitButton";
+import { buildCategoryLabel } from "./categoryUtils";
 import type { Category, MediaItem, Tag } from "./types";
 
 type MediaClassificationCardProps = {
@@ -7,23 +9,6 @@ type MediaClassificationCardProps = {
   error: string;
   onSubmit: (mediaItemId: number, categoryIds: number[], tagIds: number[]) => Promise<void>;
 };
-
-function buildCategoryLabel(categories: Category[], category: Category): string {
-  const categoryById = new Map(categories.map((entry) => [entry.id, entry]));
-  const path: string[] = [category.name];
-  let currentParentId = category.parent;
-
-  while (currentParentId !== null) {
-    const parent = categoryById.get(currentParentId);
-    if (!parent) {
-      break;
-    }
-    path.unshift(parent.name);
-    currentParentId = parent.parent;
-  }
-
-  return path.join(" / ");
-}
 
 export function MediaClassificationCard({
   categories,
@@ -110,7 +95,7 @@ export function MediaClassificationCard({
         </div>
 
         {error ? <p className="error-text">{error}</p> : null}
-        <button type="submit">Save assignments</button>
+        <SubmitButton>Save assignments</SubmitButton>
       </form>
     </article>
   );

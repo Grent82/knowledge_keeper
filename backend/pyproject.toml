@@ -2,7 +2,6 @@
 name = "knowledge-keeper-backend"
 version = "0.1.0"
 description = "Backend for the Knowledge Keeper private media and knowledge platform"
-requires-python = ">=3.10"
 dependencies = [
   "Django>=5.2,<6.0",
   "djangorestframework>=3.16,<4.0",

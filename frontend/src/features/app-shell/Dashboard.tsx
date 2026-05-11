@@ -42,7 +42,6 @@ type DashboardProps = {
   selectedTagId: number | null;
   restrictedUsers: RestrictedUser[];
   onLogout: () => Promise<void>;
-  onCreateMediaItem: (title: string, mediaType: string, description: string) => Promise<void>;
   onCreateCategory: (name: string, parentId: number | null) => Promise<void>;
   onCreateRestrictedUser: (username: string, password: string, email: string) => Promise<void>;
   onCreateTag: (name: string) => Promise<void>;
@@ -70,6 +69,36 @@ type DashboardProps = {
   onPersistProgress: (mediaItemId: number, currentTime: number, duration: number) => Promise<void>;
 };
 
+function formatSeconds(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function formatProgressPercent(progressPercent: string): number {
+  const parsedValue = Number.parseFloat(progressPercent);
+  if (Number.isNaN(parsedValue)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(parsedValue)));
+}
+
+function formatPlaybackStatus(status: string): string {
+  switch (status) {
+    case "completed":
+      return "Completed";
+    case "in_progress":
+      return "In progress";
+    default:
+      return "Not started";
+  }
+}
+
+function resolveMediaTypeBadge(mediaType: string): string {
+  return mediaType === "video" ? "▶" : "♪";
+}
+
 export function Dashboard({
   session,
   categories,
@@ -93,7 +122,6 @@ export function Dashboard({
   selectedTagId,
   restrictedUsers,
   onLogout,
-  onCreateMediaItem,
   onCreateCategory,
   onCreateRestrictedUser,
   onCreateTag,
@@ -109,6 +137,9 @@ export function Dashboard({
 }: DashboardProps) {
   const selectedProgressEntry =
     playbackEntries.find((entry) => entry.media_item === selectedMediaItem?.id) ?? null;
+  const mediaTitleById = new Map(ownerMediaItems.map((item) => [item.id, item.title]));
+  const progressFor = (item: MediaItem) =>
+    playbackEntries.find((entry) => entry.media_item === item.id) ?? null;
 
   return (
     <>
@@ -158,39 +189,43 @@ export function Dashboard({
             <p className="empty-state">No media items yet.</p>
           ) : (
             <ul className="simple-list">
-              {mediaItems.map((item) => (
-                <li key={item.id}>
-                  <button
-                    className="list-button"
-                    onClick={() => onSelectMediaItem(item)}
-                    type="button"
-                  >
-                    <strong>{item.title}</strong>
-                  </button>
-                  <span>
-                    {item.media_type} · {item.player_display_mode}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
+              {mediaItems.map((item) => {
+                const playbackEntry = progressFor(item);
+                const progressPercent = playbackEntry
+                  ? formatProgressPercent(playbackEntry.progress_percent)
+                  : 0;
 
-        <article className="card">
-          <h2>Playback Progress</h2>
-          <p className="muted">Saved continue-watching positions for the current account.</p>
-          {playbackEntries.length === 0 ? (
-            <p className="empty-state">No playback entries yet.</p>
-          ) : (
-            <ul className="simple-list">
-              {playbackEntries.map((entry) => (
-                <li key={entry.id}>
-                  <strong>Media #{entry.media_item}</strong>
-                  <span>
-                    {entry.status} · {entry.position_seconds}s · {entry.progress_percent}%
-                  </span>
-                </li>
-              ))}
+                return (
+                  <li
+                    key={item.id}
+                    className={selectedMediaItem?.id === item.id ? "selected-item" : undefined}
+                  >
+                    <button
+                      className="list-button media-list-button"
+                      onClick={() => onSelectMediaItem(item)}
+                      type="button"
+                    >
+                      <div className="media-list-title-row">
+                        <span aria-hidden="true" className="media-type-badge">
+                          {resolveMediaTypeBadge(item.media_type)}
+                        </span>
+                        <strong>{item.title}</strong>
+                      </div>
+                      <span>
+                        {item.media_type} · {item.player_display_mode}
+                      </span>
+                      {playbackEntry ? (
+                        <div aria-hidden="true" className="progress-bar-track">
+                          <div
+                            className={`progress-bar-fill ${playbackEntry.status === "completed" ? "completed" : ""}`.trim()}
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </article>
@@ -200,9 +235,34 @@ export function Dashboard({
           onPersistProgress={onPersistProgress}
           progressEntry={selectedProgressEntry}
         />
+      </section>
 
-        {session.role === "owner" ? (
-          <>
+      <section className="grid">
+        <article className="card">
+          <h2>Playback Progress</h2>
+          <p className="muted">Saved continue-watching positions for the current account.</p>
+          {playbackEntries.length === 0 ? (
+            <p className="empty-state">No playback entries yet.</p>
+          ) : (
+            <ul className="simple-list">
+              {playbackEntries.map((entry) => (
+                <li key={entry.id}>
+                  <strong>{mediaTitleById.get(entry.media_item) ?? `Media #${entry.media_item}`}</strong>
+                  <span>
+                    {formatPlaybackStatus(entry.status)} · {formatSeconds(entry.position_seconds)} · {formatProgressPercent(entry.progress_percent)}%
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+      </section>
+
+      {session.role === "owner" ? (
+        <>
+          <hr className="section-divider" />
+          <h2 className="section-heading">Library Management</h2>
+          <section className="grid">
             <UploadMediaForm error={createError} onSubmit={onUploadMediaItem} />
             <CategoryManager
               categories={categories}
@@ -211,13 +271,19 @@ export function Dashboard({
             />
             <TagManager error={tagError} onSubmit={onCreateTag} />
             <MediaClassificationCard
+              key={selectedMediaItem?.id ?? "none"}
               categories={categories}
               error={classificationError}
               mediaItem={selectedMediaItem}
               onSubmit={onUpdateMediaItemAssignments}
               tags={tags}
             />
+          </section>
+
+          <h2 className="section-heading">Access Control</h2>
+          <section className="grid">
             <RestrictedUserAccessCard
+              key={selectedRestrictedUserId ?? "none"}
               categories={categories}
               categoryAssignments={categoryAssignments}
               mediaAssignments={mediaAssignments}
@@ -230,40 +296,9 @@ export function Dashboard({
               userError={restrictedUserError}
               visibilityError={visibilityError}
             />
-            <article className="card">
-              <h2>Create Basic Media Item</h2>
-              <p className="muted">Fallback owner-only entry without file upload.</p>
-              <form
-                className="stack-form"
-                action={async (formData) => {
-                  const title = String(formData.get("title") ?? "");
-                  const mediaType = String(formData.get("mediaType") ?? "audio");
-                  const description = String(formData.get("description") ?? "");
-                  await onCreateMediaItem(title, mediaType, description);
-                }}
-              >
-                <label className="field">
-                  <span>Title</span>
-                  <input name="title" required type="text" />
-                </label>
-                <label className="field">
-                  <span>Type</span>
-                  <select defaultValue="audio" name="mediaType">
-                    <option value="audio">Audio</option>
-                    <option value="video">Video</option>
-                  </select>
-                </label>
-                <label className="field">
-                  <span>Description</span>
-                  <textarea name="description" rows={3} />
-                </label>
-                {createError ? <p className="error-text">{createError}</p> : null}
-                <button type="submit">Create media item</button>
-              </form>
-            </article>
-          </>
-        ) : null}
-      </section>
+          </section>
+        </>
+      ) : null}
     </>
   );
 }

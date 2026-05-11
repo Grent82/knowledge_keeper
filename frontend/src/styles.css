@@ -131,6 +131,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
 .secondary-button {
   background: rgba(23, 32, 42, 0.08);
   color: #17202a;
@@ -175,6 +180,55 @@ button {
   color: #17202a;
   text-align: left;
   cursor: pointer;
+}
+
+.media-list-button {
+  display: grid;
+  gap: 8px;
+}
+
+.media-list-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.media-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(155, 93, 46, 0.14);
+  color: #9b5d2e;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(23, 32, 42, 0.12);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: #9b5d2e;
+}
+
+.progress-bar-fill.completed {
+  background: #2f8f4e;
+}
+
+.selected-item {
+  padding: 12px;
+  border: 1px solid rgba(155, 93, 46, 0.24);
+  border-radius: 16px;
+  background: rgba(155, 93, 46, 0.08);
 }
 
 .tree-card,
@@ -282,4 +336,28 @@ button {
   margin-top: 18px;
   border-radius: 16px;
   background: #111;
+}
+
+.section-heading {
+  margin: 40px 0 16px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #6d7a86;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px solid rgba(23, 32, 42, 0.1);
+  margin: 32px 0 0;
+}
+
+.player-card {
+  grid-column: span 2;
+}
+
+@media (max-width: 680px) {
+  .player-card {
+    grid-column: span 1;
+  }
 }

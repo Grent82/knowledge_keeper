@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import {
   createCategoryVisibilityAssignment,
@@ -6,20 +7,12 @@ import {
   createMediaItemFromAsset,
   createMediaVisibilityAssignment,
   createPlaybackProgress,
-  createMediaItem,
   createRestrictedUser,
   createTag,
   deleteCategoryVisibilityAssignment,
   deleteMediaVisibilityAssignment,
-  fetchCategoryVisibilityAssignments,
-  fetchCategories,
-  fetchMediaVisibilityAssignments,
-  fetchMediaItems,
-  fetchPlaybackProgress,
-  fetchRestrictedUsers,
   fetchSearchSuggestions,
   fetchSession,
-  fetchTags,
   login,
   logout,
   updateMediaItemAssignments,
@@ -28,17 +21,8 @@ import {
 } from "./api";
 import { Dashboard } from "./Dashboard";
 import { LoginForm } from "./LoginForm";
-import type {
-  CategoryVisibilityAssignment,
-  Category,
-  MediaItem,
-  MediaItemVisibilityAssignment,
-  PlaybackProgress,
-  RestrictedUser,
-  SearchSuggestions,
-  SessionState,
-  Tag,
-} from "./types";
+import type { Category, MediaItem, SearchSuggestions, SessionState } from "./types";
+import { useMediaLibraryData } from "./useMediaLibraryData";
 
 const anonymousSession: SessionState = {
   is_authenticated: false,
@@ -86,20 +70,23 @@ function collectVisibleCategoryIds(
 }
 
 export function AppScreen() {
+  const navigate = useNavigate();
+  const { categoryId, mediaItemId } = useParams();
   const [session, setSession] = useState<SessionState>(anonymousSession);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [restrictedUsers, setRestrictedUsers] = useState<RestrictedUser[]>([]);
-  const [categoryAssignments, setCategoryAssignments] = useState<CategoryVisibilityAssignment[]>([]);
-  const [mediaAssignments, setMediaAssignments] = useState<MediaItemVisibilityAssignment[]>([]);
-  const [playbackEntries, setPlaybackEntries] = useState<PlaybackProgress[]>([]);
+  const {
+    categories,
+    mediaAssignments,
+    mediaItems,
+    playbackEntries,
+    restrictedUsers,
+    categoryAssignments,
+    tags,
+    refresh,
+  } = useMediaLibraryData(session);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestions | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
   const [selectedRestrictedUserId, setSelectedRestrictedUserId] = useState<number | null>(null);
-  const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
   const [loginError, setLoginError] = useState("");
   const [createError, setCreateError] = useState("");
   const [categoryError, setCategoryError] = useState("");
@@ -108,8 +95,17 @@ export function AppScreen() {
   const [restrictedUserError, setRestrictedUserError] = useState("");
   const [visibilityError, setVisibilityError] = useState("");
 
+  const parsedCategoryId = categoryId ? Number(categoryId) : null;
+  const selectedCategoryId =
+    parsedCategoryId !== null && !Number.isNaN(parsedCategoryId) ? parsedCategoryId : null;
+  const parsedMediaItemId = mediaItemId ? Number(mediaItemId) : null;
+  const selectedMediaItem =
+    parsedMediaItemId !== null && !Number.isNaN(parsedMediaItemId)
+      ? mediaItems.find((item) => item.id === parsedMediaItemId) ?? null
+      : null;
+
   useEffect(() => {
-    void refreshSession();
+    void fetchSession().then(setSession);
   }, []);
 
   useEffect(() => {
@@ -148,81 +144,42 @@ export function AppScreen() {
     });
   }, [restrictedUsers, session.role]);
 
-  async function refreshSession() {
-    const nextSession = await fetchSession();
-    setSession(nextSession);
-
-    if (nextSession.is_authenticated) {
-      await refreshData(nextSession);
-    }
-  }
-
-  async function refreshData(currentSession: SessionState = session) {
-    const [items, progress, nextCategories, nextTags] = await Promise.all([
-      fetchMediaItems(),
-      fetchPlaybackProgress(),
-      fetchCategories(),
-      fetchTags(),
-    ]);
-    setMediaItems(items);
-    setPlaybackEntries(progress);
-    setCategories(nextCategories);
-    setTags(nextTags);
-    setSelectedMediaItem((currentSelected) => {
-      if (!currentSelected) {
-        return items[0] ?? null;
-      }
-      return items.find((item) => item.id === currentSelected.id) ?? items[0] ?? null;
-    });
-
-    if (currentSession.role === "owner") {
-      const [nextRestrictedUsers, nextCategoryAssignments, nextMediaAssignments] = await Promise.all([
-        fetchRestrictedUsers(),
-        fetchCategoryVisibilityAssignments(),
-        fetchMediaVisibilityAssignments(),
-      ]);
-      setRestrictedUsers(nextRestrictedUsers);
-      setCategoryAssignments(nextCategoryAssignments);
-      setMediaAssignments(nextMediaAssignments);
+  function navigateToMediaItem(itemId: number, categorySelection: number | null = selectedCategoryId) {
+    if (categorySelection !== null) {
+      navigate(`/c/${categorySelection}/m/${itemId}`);
       return;
     }
 
-    setRestrictedUsers([]);
-    setCategoryAssignments([]);
-    setMediaAssignments([]);
+    navigate(`/m/${itemId}`);
+  }
+
+  function handleSelectCategory(categorySelection: number | null) {
+    if (categorySelection === null) {
+      navigate("/");
+      return;
+    }
+
+    navigate(`/c/${categorySelection}`);
+  }
+
+  function handleSelectMediaItem(item: MediaItem) {
+    navigateToMediaItem(item.id);
   }
 
   const visibleCategoryIds = collectVisibleCategoryIds(categories, selectedCategoryId);
   const visibleMediaItems = mediaItems.filter((item) => {
     const categoryMatch =
       visibleCategoryIds === null ||
-      item.categories.some((categoryId) => visibleCategoryIds.has(categoryId));
+      item.categories.some((categorySelection) => visibleCategoryIds.has(categorySelection));
     const tagMatch = selectedTagId === null || item.tags.includes(selectedTagId);
     return categoryMatch && tagMatch;
   });
-
-  useEffect(() => {
-    if (visibleMediaItems.length === 0) {
-      setSelectedMediaItem(null);
-      return;
-    }
-
-    if (!selectedMediaItem) {
-      setSelectedMediaItem(visibleMediaItems[0] ?? null);
-      return;
-    }
-
-    if (!visibleMediaItems.some((item) => item.id === selectedMediaItem.id)) {
-      setSelectedMediaItem(visibleMediaItems[0] ?? null);
-    }
-  }, [selectedMediaItem, visibleMediaItems]);
 
   async function handleLogin(username: string, password: string) {
     try {
       setLoginError("");
       const nextSession = await login(username, password);
       setSession(nextSession);
-      await refreshData(nextSession);
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : "Login failed.");
     }
@@ -230,31 +187,12 @@ export function AppScreen() {
 
   async function handleLogout() {
     await logout();
+    navigate("/");
     setSession(anonymousSession);
-    setMediaItems([]);
-    setPlaybackEntries([]);
-    setCategories([]);
-    setTags([]);
-    setRestrictedUsers([]);
-    setCategoryAssignments([]);
-    setMediaAssignments([]);
     setSearchQuery("");
     setSearchSuggestions(null);
-    setSelectedCategoryId(null);
     setSelectedTagId(null);
     setSelectedRestrictedUserId(null);
-    setSelectedMediaItem(null);
-  }
-
-  async function handleCreateMediaItem(title: string, mediaType: string, description: string) {
-    try {
-      setCreateError("");
-      const item = await createMediaItem(title, mediaType, description);
-      await refreshData();
-      setSelectedMediaItem(item);
-    } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Media creation failed.");
-    }
   }
 
   async function handleUploadMediaItem(
@@ -267,8 +205,8 @@ export function AppScreen() {
       setCreateError("");
       const asset = await uploadMediaAsset(file);
       const item = await createMediaItemFromAsset(title, mediaType, description, asset.id);
-      await refreshData();
-      setSelectedMediaItem(item);
+      await refresh();
+      navigateToMediaItem(item.id);
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Upload failed.");
     }
@@ -277,21 +215,21 @@ export function AppScreen() {
   async function handlePersistProgress(mediaItemId: number, currentTime: number, duration: number) {
     const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
     const existingEntry = playbackEntries.find((entry) => entry.media_item === mediaItemId);
-    const nextEntry = existingEntry
-      ? await updatePlaybackProgress(existingEntry.id, mediaItemId, currentTime, progressPercent)
-      : await createPlaybackProgress(mediaItemId, currentTime, progressPercent);
 
-    setPlaybackEntries((currentEntries) => {
-      const withoutCurrent = currentEntries.filter((entry) => entry.media_item !== mediaItemId);
-      return [...withoutCurrent, nextEntry].sort((left, right) => left.media_item - right.media_item);
-    });
+    if (existingEntry) {
+      await updatePlaybackProgress(existingEntry.id, mediaItemId, currentTime, progressPercent);
+    } else {
+      await createPlaybackProgress(mediaItemId, currentTime, progressPercent);
+    }
+
+    await refresh();
   }
 
   async function handleCreateCategory(name: string, parentId: number | null) {
     try {
       setCategoryError("");
       await createCategory(name, parentId);
-      await refreshData();
+      await refresh();
     } catch (error) {
       setCategoryError(error instanceof Error ? error.message : "Category creation failed.");
     }
@@ -301,7 +239,7 @@ export function AppScreen() {
     try {
       setTagError("");
       await createTag(name);
-      await refreshData();
+      await refresh();
     } catch (error) {
       setTagError(error instanceof Error ? error.message : "Tag creation failed.");
     }
@@ -315,8 +253,8 @@ export function AppScreen() {
     try {
       setClassificationError("");
       const updatedMediaItem = await updateMediaItemAssignments(mediaItemId, categoryIds, tagIds);
-      await refreshData();
-      setSelectedMediaItem(updatedMediaItem);
+      await refresh();
+      navigateToMediaItem(updatedMediaItem.id);
     } catch (error) {
       setClassificationError(
         error instanceof Error ? error.message : "Media classification update failed.",
@@ -328,7 +266,7 @@ export function AppScreen() {
     try {
       setRestrictedUserError("");
       const restrictedUser = await createRestrictedUser(username, password, email);
-      await refreshData();
+      await refresh();
       setSelectedRestrictedUserId(restrictedUser.id);
     } catch (error) {
       setRestrictedUserError(
@@ -365,14 +303,14 @@ export function AppScreen() {
 
       await Promise.all([
         ...nextCategoryIds
-          .filter((categoryId) => !currentCategoryIds.has(categoryId))
-          .map((categoryId) => createCategoryVisibilityAssignment(userId, categoryId)),
+          .filter((categorySelection) => !currentCategoryIds.has(categorySelection))
+          .map((categorySelection) => createCategoryVisibilityAssignment(userId, categorySelection)),
         ...nextMediaItemIds
-          .filter((mediaItemId) => !currentMediaIds.has(mediaItemId))
-          .map((mediaItemId) => createMediaVisibilityAssignment(userId, mediaItemId)),
+          .filter((itemId) => !currentMediaIds.has(itemId))
+          .map((itemId) => createMediaVisibilityAssignment(userId, itemId)),
       ]);
 
-      await refreshData();
+      await refresh();
     } catch (error) {
       setVisibilityError(error instanceof Error ? error.message : "Visibility update failed.");
     }
@@ -395,39 +333,36 @@ export function AppScreen() {
 
   return (
     <Dashboard
-      createError={createError}
-      categoryError={categoryError}
       categoryAssignments={categoryAssignments}
-      classificationError={classificationError}
+      categoryError={categoryError}
       categories={categories}
+      classificationError={classificationError}
+      createError={createError}
       mediaAssignments={mediaAssignments}
-      ownerMediaItems={mediaItems}
       mediaItems={visibleMediaItems}
-      onCreateMediaItem={handleCreateMediaItem}
+      onChangeSearchQuery={setSearchQuery}
       onCreateCategory={handleCreateCategory}
       onCreateRestrictedUser={handleCreateRestrictedUser}
       onCreateTag={handleCreateTag}
-      onChangeSearchQuery={setSearchQuery}
       onLogout={handleLogout}
       onPersistProgress={handlePersistProgress}
       onSaveVisibility={handleSaveVisibility}
-      onSelectCategory={(categoryId) => {
-        setSelectedCategoryId(categoryId);
-      }}
-      onSelectMediaItem={setSelectedMediaItem}
+      onSelectCategory={handleSelectCategory}
+      onSelectMediaItem={handleSelectMediaItem}
       onSelectRestrictedUser={setSelectedRestrictedUserId}
       onSelectTag={setSelectedTagId}
       onUpdateMediaItemAssignments={handleUpdateMediaItemAssignments}
       onUploadMediaItem={handleUploadMediaItem}
+      ownerMediaItems={mediaItems}
       playbackEntries={playbackEntries}
       restrictedUserError={restrictedUserError}
       restrictedUsers={restrictedUsers}
       searchQuery={searchQuery}
       searchSuggestions={searchSuggestions}
       selectedCategoryId={selectedCategoryId}
+      selectedMediaItem={selectedMediaItem}
       selectedRestrictedUserId={selectedRestrictedUserId}
       selectedTagId={selectedTagId}
-      selectedMediaItem={selectedMediaItem}
       session={session}
       tagError={tagError}
       tags={tags}
