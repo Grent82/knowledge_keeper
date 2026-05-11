@@ -128,3 +128,9 @@ CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "true" if DEBUG
 CELERY_TASK_EAGER_PROPAGATES = True
 
 TRANSCRIPTION_PROVIDER = os.getenv("TRANSCRIPTION_PROVIDER", "stub")
+
+# AI / Summary provider
+SUMMARY_PROVIDER = os.getenv("SUMMARY_PROVIDER", "stub")
+AI_HUB_BASE_URL = os.getenv("AI_HUB_BASE_URL", "")
+AI_HUB_API_KEY = os.getenv("AI_HUB_API_KEY", "")
+AI_HUB_MODEL = os.getenv("AI_HUB_MODEL", "qwen-3.5-122b-sovereign")

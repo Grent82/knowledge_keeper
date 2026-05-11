@@ -2,7 +2,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
-from .providers.stub import summary_provider, transcription_provider
+from .providers.factory import get_summary_provider, get_transcription_provider
 
 
 @shared_task(bind=True, max_retries=3)
@@ -39,7 +39,7 @@ def transcribe_media_item(self, media_item_id: int) -> None:
             except Exception:
                 pass
 
-        result = transcription_provider.transcribe(asset_path)
+        result = get_transcription_provider().transcribe(asset_path)
 
         transcript.content = result.full_text
         transcript.language_code = result.language_code
@@ -112,7 +112,7 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
     summary.save(update_fields=["status", "updated_at"])
 
     try:
-        content = summary_provider.summarize(transcript.content, kind=kind)
+        content = get_summary_provider().summarize(transcript.content, kind=kind)
         summary.content = content
         summary.status = ArtifactStatus.READY
         summary.generated_at = timezone.now()

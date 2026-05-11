@@ -12,17 +12,12 @@ pytestmark = pytest.mark.django_db
 
 
 @patch("apps.playback.tasks.summarize_transcript.delay")
-@patch("apps.playback.tasks.transcription_provider.transcribe")
+@patch("apps.playback.tasks.get_transcription_provider")
 def test_transcribe_media_item_creates_transcript_and_segments(
-    mock_transcribe, mock_summarize_delay
+    mock_get_provider, mock_summarize_delay
 ):
-    owner = User.objects.create_user(username="owner-task-success", role=UserRole.OWNER)
-    media_item = MediaItem.objects.create(
-        title="Task Source",
-        media_type=MediaType.AUDIO,
-        owner=owner,
-    )
-    mock_transcribe.return_value = TranscriptionResult(
+    mock_provider = mock_get_provider.return_value
+    mock_provider.transcribe.return_value = TranscriptionResult(
         full_text="Hello task world",
         segments=[
             SegmentResult(sequence_number=1, content="Hello", start_seconds=0.0, end_seconds=1.5),
@@ -34,6 +29,12 @@ def test_transcribe_media_item_creates_transcript_and_segments(
             ),
         ],
         language_code="en",
+    )
+    owner = User.objects.create_user(username="owner-task-success", role=UserRole.OWNER)
+    media_item = MediaItem.objects.create(
+        title="Task Source",
+        media_type=MediaType.AUDIO,
+        owner=owner,
     )
 
     transcribe_media_item.run(media_item.id)
@@ -48,8 +49,8 @@ def test_transcribe_media_item_creates_transcript_and_segments(
 
 
 @patch("apps.playback.tasks.summarize_transcript.delay")
-@patch("apps.playback.tasks.transcription_provider.transcribe")
-def test_transcribe_media_item_idempotent(mock_transcribe, mock_summarize_delay):
+@patch("apps.playback.tasks.get_transcription_provider")
+def test_transcribe_media_item_idempotent(mock_get_provider, mock_summarize_delay):
     owner = User.objects.create_user(username="owner-task-idempotent", role=UserRole.OWNER)
     media_item = MediaItem.objects.create(
         title="Ready Source",
@@ -75,16 +76,16 @@ def test_transcribe_media_item_idempotent(mock_transcribe, mock_summarize_delay)
     assert transcript.content == "Existing transcript"
     assert transcript.language_code == "de"
     assert TranscriptSegment.objects.filter(transcript=transcript).count() == 1
-    mock_transcribe.assert_not_called()
+    mock_get_provider.return_value.transcribe.assert_not_called()
     mock_summarize_delay.assert_not_called()
 
 
 @patch("apps.playback.tasks.transcribe_media_item.retry")
 @patch(
-    "apps.playback.tasks.transcription_provider.transcribe",
-    side_effect=RuntimeError("provider failed"),
+    "apps.playback.tasks.get_transcription_provider",
 )
-def test_transcribe_media_item_failed_on_provider_error(mock_transcribe, mock_retry):
+def test_transcribe_media_item_failed_on_provider_error(mock_get_provider, mock_retry):
+    mock_get_provider.return_value.transcribe.side_effect = RuntimeError("provider failed")
     owner = User.objects.create_user(username="owner-task-failure", role=UserRole.OWNER)
     media_item = MediaItem.objects.create(
         title="Broken Source",
@@ -99,12 +100,13 @@ def test_transcribe_media_item_failed_on_provider_error(mock_transcribe, mock_re
     transcript = Transcript.objects.get(media_item=media_item)
     assert transcript.status == ArtifactStatus.FAILED
     assert transcript.error_message == "provider failed"
-    mock_transcribe.assert_called_once()
+    mock_get_provider.return_value.transcribe.assert_called_once()
     mock_retry.assert_called_once()
 
 
-@patch("apps.playback.tasks.summary_provider.summarize", return_value="Short summary")
-def test_summarize_transcript_creates_summary(mock_summarize):
+@patch("apps.playback.tasks.get_summary_provider")
+def test_summarize_transcript_creates_summary(mock_get_provider):
+    mock_get_provider.return_value.summarize.return_value = "Short summary"
     owner = User.objects.create_user(username="owner-summary-task", role=UserRole.OWNER)
     media_item = MediaItem.objects.create(
         title="Summary Source",
@@ -123,7 +125,7 @@ def test_summarize_transcript_creates_summary(mock_summarize):
     assert summary.status == ArtifactStatus.READY
     assert summary.content == "Short summary"
     assert summary.generated_at is not None
-    mock_summarize.assert_called_once_with("Long transcript body", kind="short")
+    mock_get_provider.return_value.summarize.assert_called_once_with("Long transcript body", kind="short")
 
 
 def test_summarize_transcript_skips_if_not_ready():
