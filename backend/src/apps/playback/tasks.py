@@ -26,19 +26,20 @@ def _extract_youtube_id(url: str) -> str | None:
 
 
 def _try_youtube_captions(source_url: str):
-    """Fetch YouTube captions via youtube-transcript-api. Returns TranscriptionResult or None."""
-    from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+    """Fetch YouTube captions via youtube-transcript-api v1.x. Returns TranscriptionResult or None."""
+    from youtube_transcript_api import YouTubeTranscriptApi
+    from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 
     video_id = _extract_youtube_id(source_url)
     if not video_id:
         return None
 
+    ytt = YouTubeTranscriptApi()
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-    except (NoTranscriptFound, TranscriptsDisabled, Exception):
+        transcript_list = ytt.list(video_id)
+    except (TranscriptsDisabled, Exception):
         return None
 
-    # Prefer manual transcripts over auto-generated; prefer DE over EN
     transcript = None
     for lang in ["de", "en"]:
         try:
@@ -49,24 +50,23 @@ def _try_youtube_captions(source_url: str):
 
     if transcript is None:
         try:
-            # Any available transcript, translate to DE if possible
             transcript = transcript_list.find_generated_transcript(["de", "en"])
         except Exception:
             return None
 
     try:
-        entries = transcript.fetch()
+        fetched = transcript.fetch()
     except Exception:
         return None
 
     segments = [
         SegmentResult(
             sequence_number=i,
-            content=e["text"].replace("\n", " "),
-            start_seconds=e["start"],
-            end_seconds=e["start"] + e.get("duration", 0),
+            content=snippet.text.replace("\n", " "),
+            start_seconds=snippet.start,
+            end_seconds=snippet.start + snippet.duration,
         )
-        for i, e in enumerate(entries)
+        for i, snippet in enumerate(fetched)
     ]
 
     return TranscriptionResult(
