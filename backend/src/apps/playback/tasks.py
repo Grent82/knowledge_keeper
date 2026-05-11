@@ -1,3 +1,4 @@
+import re
 import shutil
 import tempfile
 
@@ -6,38 +7,70 @@ from django.utils import timezone
 
 from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
 from .providers.factory import get_summary_provider, get_transcription_provider
-from .providers.vtt_parser import parse_vtt
+from .ports import TranscriptionResult, SegmentResult
 
 
-def _try_youtube_captions(source_url: str, tmpdir: str):
-    """Try to fetch YouTube auto-generated captions. Returns TranscriptionResult or None."""
-    import yt_dlp
-
-    ydl_opts = {
-        "skip_download": True,
-        "writeautomaticsub": True,
-        "writesubtitles": True,
-        "subtitleslangs": ["de", "en"],
-        "subtitlesformat": "vtt",
-        "outtmpl": f"{tmpdir}/sub",
-        "quiet": True,
-        "no_warnings": True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(source_url, download=True)
-
-    language_code = ""
-    for lang in ["de", "en"]:
-        import glob as _glob
-        matches = _glob.glob(f"{tmpdir}/sub.{lang}*.vtt")
-        if matches:
-            language_code = lang
-            vtt_text = open(matches[0], encoding="utf-8").read()
-            result = parse_vtt(vtt_text)
-            result.language_code = language_code
-            return result
-
+def _extract_youtube_id(url: str) -> str | None:
+    """Extract YouTube video ID from various URL formats."""
+    patterns = [
+        r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, url)
+        if m:
+            return m.group(1)
     return None
+
+
+def _try_youtube_captions(source_url: str):
+    """Fetch YouTube captions via youtube-transcript-api. Returns TranscriptionResult or None."""
+    from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+
+    video_id = _extract_youtube_id(source_url)
+    if not video_id:
+        return None
+
+    try:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+    except (NoTranscriptFound, TranscriptsDisabled, Exception):
+        return None
+
+    # Prefer manual transcripts over auto-generated; prefer DE over EN
+    transcript = None
+    for lang in ["de", "en"]:
+        try:
+            transcript = transcript_list.find_transcript([lang])
+            break
+        except NoTranscriptFound:
+            pass
+
+    if transcript is None:
+        try:
+            # Any available transcript, translate to DE if possible
+            transcript = transcript_list.find_generated_transcript(["de", "en"])
+        except Exception:
+            return None
+
+    try:
+        entries = transcript.fetch()
+    except Exception:
+        return None
+
+    segments = [
+        SegmentResult(
+            sequence_number=i,
+            content=e["text"].replace("\n", " "),
+            start_seconds=e["start"],
+            end_seconds=e["start"] + e.get("duration", 0),
+        )
+        for i, e in enumerate(entries)
+    ]
+
+    return TranscriptionResult(
+        full_text=" ".join(s.content for s in segments),
+        language_code=transcript.language_code,
+        segments=segments,
+    )
 
 
 def _resolve_audio_path(media_item) -> tuple[str, str | None]:
@@ -115,15 +148,10 @@ def transcribe_media_item(self, media_item_id: int) -> None:
 
         # For YouTube: try captions first (fast, no DRM issues)
         if media_item.external_source_id:
-            caption_tmpdir = tempfile.mkdtemp(prefix="kk_captions_")
             try:
-                result = _try_youtube_captions(
-                    media_item.external_source.source_url, caption_tmpdir
-                )
+                result = _try_youtube_captions(media_item.external_source.source_url)
             except Exception:
                 pass
-            finally:
-                shutil.rmtree(caption_tmpdir, ignore_errors=True)
 
         # Fall back to audio download + Whisper
         if result is None:
