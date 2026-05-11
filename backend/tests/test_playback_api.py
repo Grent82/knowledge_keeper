@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -156,3 +158,70 @@ def test_owner_can_list_segments_for_a_specific_transcript():
     assert response.status_code == 200
     assert [entry["sequence_number"] for entry in response.data] == [1, 2]
     assert [entry["transcript"] for entry in response.data] == [transcript.id, transcript.id]
+
+
+@patch("apps.playback.views.transcribe_media_item.delay")
+def test_trigger_transcription_returns_202(mock_delay):
+    owner = User.objects.create_user(
+        username="owner-trigger",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Trigger Item",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(f"/api/playback/trigger/{media_item.id}/")
+
+    assert response.status_code == 202
+    assert response.data == {"status": "queued", "media_item_id": media_item.id}
+    mock_delay.assert_called_once_with(media_item.id)
+
+
+def test_trigger_transcription_409_if_processing():
+    owner = User.objects.create_user(
+        username="owner-trigger-processing",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Processing Item",
+        media_type=MediaType.VIDEO,
+        owner=owner,
+    )
+    Transcript.objects.create(media_item=media_item, status=ArtifactStatus.PROCESSING)
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(f"/api/playback/trigger/{media_item.id}/")
+
+    assert response.status_code == 409
+    assert response.data["detail"] == "Transcription already in progress."
+
+
+def test_trigger_transcription_403_for_non_owner():
+    owner = User.objects.create_user(
+        username="owner-trigger-target",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    restricted = User.objects.create_user(
+        username="restricted-trigger",
+        password="secret",
+        role=UserRole.RESTRICTED_USER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Protected Item",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    client = APIClient()
+    client.force_authenticate(user=restricted)
+
+    response = client.post(f"/api/playback/trigger/{media_item.id}/")
+
+    assert response.status_code in {403, 404}

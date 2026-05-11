@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { deleteKnowledgeNote, fetchKnowledgeNotes } from "./api";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
 import { ExternalSourceForm } from "./ExternalSourceForm";
+import { KnowledgeNoteEditor } from "./KnowledgeNoteEditor";
+import { KnowledgeNoteList } from "./KnowledgeNoteList";
 import { MediaPlayerCard } from "./MediaPlayerCard";
 import { MediaClassificationCard } from "./MediaClassificationCard";
 import { TranscriptPanel } from "./TranscriptPanel";
@@ -14,6 +17,7 @@ import { UploadMediaForm } from "./UploadMediaForm";
 import type {
   CategoryVisibilityAssignment,
   Category,
+  KnowledgeNote,
   MediaItem,
   MediaItemVisibilityAssignment,
   PlaybackProgress,
@@ -173,6 +177,11 @@ export function Dashboard({
   >("all");
   const [sortBy, setSortBy] = useState<"title" | "date" | "progress">("title");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [knowledgeNotes, setKnowledgeNotes] = useState<KnowledgeNote[]>([]);
+  const [knowledgeNotesLoading, setKnowledgeNotesLoading] = useState(false);
+  const [knowledgeNotesError, setKnowledgeNotesError] = useState("");
+  const [selectedNote, setSelectedNote] = useState<KnowledgeNote | null>(null);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
   const selectedProgressEntry =
     playbackEntries.find((entry) => entry.media_item === selectedMediaItem?.id) ?? null;
   const mediaTitleById = new Map(ownerMediaItems.map((item) => [item.id, item.title]));
@@ -201,6 +210,51 @@ export function Dashboard({
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
+
+  const loadNotes = useCallback(async (): Promise<KnowledgeNote[]> => {
+    if (session.role !== "owner") {
+      setKnowledgeNotes([]);
+      setSelectedNote(null);
+      return [];
+    }
+
+    setKnowledgeNotesLoading(true);
+    setKnowledgeNotesError("");
+
+    try {
+      const nextNotes = await fetchKnowledgeNotes();
+      setKnowledgeNotes(nextNotes);
+      setSelectedNote((currentNote) =>
+        currentNote ? nextNotes.find((candidate) => candidate.id === currentNote.id) ?? null : currentNote,
+      );
+      return nextNotes;
+    } catch (nextError) {
+      const message = nextError instanceof Error ? nextError.message : "Notizen konnten nicht geladen werden.";
+      setKnowledgeNotesError(message);
+      setKnowledgeNotes([]);
+      setSelectedNote(null);
+      return [];
+    } finally {
+      setKnowledgeNotesLoading(false);
+    }
+  }, [session.role]);
+
+  useEffect(() => {
+    void loadNotes();
+  }, [loadNotes]);
+
+  async function handleNoteSaved(note: KnowledgeNote): Promise<void> {
+    const nextNotes = await loadNotes();
+    setSelectedNote(nextNotes.find((candidate) => candidate.id === note.id) ?? note);
+    setShowNoteEditor(false);
+  }
+
+  async function handleNoteDelete(noteId: number): Promise<void> {
+    await deleteKnowledgeNote(noteId);
+    setSelectedNote(null);
+    setShowNoteEditor(false);
+    await loadNotes();
+  }
 
   return (
     <>
@@ -365,6 +419,42 @@ export function Dashboard({
       {session.role === "owner" ? (
         <>
           <hr className="section-divider" />
+          <h2 className="section-heading">Wissensnotizen</h2>
+          <section className="grid knowledge-notes-grid">
+            <KnowledgeNoteList
+              notes={knowledgeNotes}
+              onCreate={() => {
+                setSelectedNote(null);
+                setShowNoteEditor(true);
+              }}
+              onSelect={(note) => {
+                setSelectedNote(note);
+                setShowNoteEditor(true);
+              }}
+            />
+            {showNoteEditor ? (
+              <KnowledgeNoteEditor
+                allNotes={knowledgeNotes}
+                initialMediaItemId={selectedMediaItem?.id ?? null}
+                note={selectedNote}
+                onClose={() => setShowNoteEditor(false)}
+                onDelete={handleNoteDelete}
+                onSave={(note) => {
+                  void handleNoteSaved(note);
+                }}
+              />
+            ) : (
+              <article className="card knowledge-note-editor">
+                <h2>Notizeditor</h2>
+                <p className="muted">
+                  {knowledgeNotesLoading
+                    ? "Wissensnotizen werden geladen…"
+                    : knowledgeNotesError || "Wähle eine Notiz oder erstelle eine neue."}
+                </p>
+              </article>
+            )}
+          </section>
+
           <h2 className="section-heading">Library Management</h2>
           <section className="grid">
             <UploadMediaForm error={createError} onSubmit={onUploadMediaItem} />

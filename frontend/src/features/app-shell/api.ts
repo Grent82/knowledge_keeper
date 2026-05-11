@@ -2,6 +2,7 @@ import type {
   CategoryVisibilityAssignment,
   Category,
   ExternalSource,
+  KnowledgeNote,
   MediaItem,
   MediaItemVisibilityAssignment,
   PlaybackProgress,
@@ -38,6 +39,16 @@ async function ensureCsrfCookie(): Promise<string> {
   return token;
 }
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const method = init?.method ?? "GET";
   const headers = new Headers(init?.headers ?? {});
@@ -62,7 +73,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || `${response.status} ${response.statusText}`);
+    let parsedMessage = message || `${response.status} ${response.statusText}`;
+
+    try {
+      const payload = JSON.parse(message) as { detail?: string };
+      parsedMessage = payload.detail ?? parsedMessage;
+    } catch {
+      // Ignore non-JSON error payloads.
+    }
+
+    throw new ApiError(response.status, parsedMessage);
   }
 
   if (response.status === 204) {
@@ -145,6 +165,32 @@ export function fetchTranscriptSegments(transcriptId: number) {
 
 export function fetchSummaries(mediaItemId: number) {
   return request<Summary[]>(`/api/playback/summaries?media_item=${mediaItemId}`);
+}
+
+export async function triggerTranscription(
+  mediaItemId: number,
+): Promise<{ status: string; media_item_id: number }> {
+  return request(`/api/playback/trigger/${mediaItemId}/`, { method: "POST" });
+}
+
+export async function fetchKnowledgeNotes(mediaItemId?: number): Promise<KnowledgeNote[]> {
+  const params = mediaItemId ? `?media_item=${mediaItemId}` : "";
+  return request(`/api/knowledge-notes/${params}`);
+}
+
+export async function createKnowledgeNote(data: Partial<KnowledgeNote>): Promise<KnowledgeNote> {
+  return request("/api/knowledge-notes/", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateKnowledgeNote(
+  id: number,
+  data: Partial<KnowledgeNote>,
+): Promise<KnowledgeNote> {
+  return request(`/api/knowledge-notes/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function deleteKnowledgeNote(id: number): Promise<void> {
+  return request(`/api/knowledge-notes/${id}`, { method: "DELETE" });
 }
 
 export function fetchCategoryVisibilityAssignments() {

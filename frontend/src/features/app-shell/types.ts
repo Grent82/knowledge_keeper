@@ -113,6 +113,18 @@ export type Summary = {
   generated_at: string | null;
 };
 
+export type KnowledgeNote = {
+  id: number;
+  owner: number;
+  title: string;
+  content_markdown: string;
+  media_item: number | null;
+  transcript: number | null;
+  linked_notes: number[];
+  created_at: string;
+  updated_at: string;
+};
+
 export type SearchSuggestions = {
   categories: Category[];
   tags: Tag[];

@@ -19,3 +19,6 @@ Wissensnotizen sollen langfristig portabel, verlinkbar und fuer tools wie Obsidi
 - positive: Wissensbasis bleibt portabel
 - positive: operative Daten bleiben robust modellierbar
 - negative: Sync zwischen DB und Markdown muss spaeter klar definiert werden
+
+## Implementation Note
+See ADR 0007 for the concrete MVP implementation decision: database storage with optional export, superseding the file-based interpretation for Phase 3.

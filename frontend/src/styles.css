@@ -452,12 +452,78 @@ button:disabled {
   color: #8f2e2e;
 }
 
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.card-header p {
+  margin-top: 4px;
+}
+
+.knowledge-notes-grid,
 .player-card,
 .transcript-card {
   grid-column: span 2;
 }
 
+.knowledge-note-editor {
+  align-self: start;
+}
+
+.tab-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.tab-button {
+  background: rgba(155, 93, 46, 0.14);
+  color: #9b5d2e;
+}
+
+.tab-button-active {
+  background: #9b5d2e;
+  color: #fffdf8;
+}
+
+.markdown-preview {
+  border: 1px solid rgba(23, 32, 42, 0.08);
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  min-height: 240px;
+}
+
+.markdown-preview > :first-child {
+  margin-top: 0;
+}
+
+.note-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.note-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: rgba(23, 32, 42, 0.08);
+  color: #17202a;
+  font-size: 0.9rem;
+}
+
+.note-editor-actions {
+  justify-content: flex-start;
+}
+
 @media (max-width: 680px) {
+  .knowledge-notes-grid,
   .player-card,
   .transcript-card {
     grid-column: span 1;

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { fetchSummaries, fetchTranscriptSegments, fetchTranscripts } from "./api";
+import { ApiError, fetchSummaries, fetchTranscriptSegments, fetchTranscripts, triggerTranscription } from "./api";
 import type { MediaItem, Summary, Transcript, TranscriptSegment } from "./types";
 
 type TranscriptPanelProps = { mediaItem: MediaItem };
@@ -51,52 +51,56 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
   const [selectedTranscriptId, setSelectedTranscriptId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [segmentLoading, setSegmentLoading] = useState(false);
+  const [triggerLoading, setTriggerLoading] = useState(false);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+  const shouldShowTriggerButton =
+    transcripts.length === 0 || transcripts.every((transcript) => transcript.status === "failed");
+
+  const loadArtifacts = useCallback(async (cancelled: () => boolean = () => false) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [nextTranscripts, nextSummaries] = await Promise.all([
+        fetchTranscripts(mediaItem.id),
+        fetchSummaries(mediaItem.id),
+      ]);
+      if (cancelled()) {
+        return;
+      }
+
+      setTranscripts(nextTranscripts);
+      setSummaries(nextSummaries);
+      setSelectedTranscriptId((currentId) => {
+        if (currentId && nextTranscripts.some((transcript) => transcript.id === currentId)) {
+          return currentId;
+        }
+        return nextTranscripts[0]?.id ?? null;
+      });
+    } catch (nextError) {
+      if (!cancelled()) {
+        setError(nextError instanceof Error ? nextError.message : "Artifact loading failed.");
+        setTranscripts([]);
+        setSummaries([]);
+        setSelectedTranscriptId(null);
+      }
+    } finally {
+      if (!cancelled()) {
+        setLoading(false);
+      }
+    }
+  }, [mediaItem.id]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadArtifacts() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [nextTranscripts, nextSummaries] = await Promise.all([
-          fetchTranscripts(mediaItem.id),
-          fetchSummaries(mediaItem.id),
-        ]);
-        if (cancelled) {
-          return;
-        }
-
-        setTranscripts(nextTranscripts);
-        setSummaries(nextSummaries);
-        setSelectedTranscriptId((currentId) => {
-          if (currentId && nextTranscripts.some((transcript) => transcript.id === currentId)) {
-            return currentId;
-          }
-          return nextTranscripts[0]?.id ?? null;
-        });
-      } catch (nextError) {
-        if (!cancelled) {
-          setError(nextError instanceof Error ? nextError.message : "Artifact loading failed.");
-          setTranscripts([]);
-          setSummaries([]);
-          setSelectedTranscriptId(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    void loadArtifacts();
+    void loadArtifacts(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [mediaItem.id]);
+  }, [loadArtifacts]);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,10 +139,41 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
   const selectedTranscript =
     transcripts.find((transcript) => transcript.id === selectedTranscriptId) ?? transcripts[0] ?? null;
 
+  async function handleTriggerTranscription(): Promise<void> {
+    setTriggerLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const response = await triggerTranscription(mediaItem.id);
+      setInfoMessage(`Transkription ${response.status}.`);
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.status === 409) {
+        setInfoMessage(nextError.message);
+      } else {
+        setError(
+          nextError instanceof Error ? nextError.message : "Transcription request failed.",
+        );
+      }
+    } finally {
+      setTriggerLoading(false);
+    }
+  }
+
   return (
     <article className="card transcript-card">
-      <h2>Transcript & Summary</h2>
-      <p className="muted">Generated artifacts for {mediaItem.title}.</p>
+      <div className="card-header">
+        <div>
+          <h2>Transcript & Summary</h2>
+          <p className="muted">Generated artifacts for {mediaItem.title}.</p>
+        </div>
+        {shouldShowTriggerButton ? (
+          <button disabled={triggerLoading} onClick={() => void handleTriggerTranscription()} type="button">
+            {triggerLoading ? "Starte…" : "Transkription starten"}
+          </button>
+        ) : null}
+      </div>
+      {infoMessage ? <p className="muted artifact-error">{infoMessage}</p> : null}
       {error ? <p className="error-text artifact-error">{error}</p> : null}
       {loading ? <p className="empty-state">Loading generated artifacts…</p> : null}
 

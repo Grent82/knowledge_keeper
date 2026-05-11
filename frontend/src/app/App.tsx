@@ -16,6 +16,7 @@ export function App() {
         <Route element={screen} path="/" />
         <Route element={screen} path="/c/:categoryId" />
         <Route element={screen} path="/m/:mediaItemId" />
+        <Route element={screen} path="/notes/:noteId" />
         <Route element={screen} path="/c/:categoryId/m/:mediaItemId" />
       </Routes>
     </BrowserRouter>

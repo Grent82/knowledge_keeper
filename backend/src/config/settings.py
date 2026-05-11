@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.access_control",
     "apps.media_library",
     "apps.playback",
+    "apps.knowledge_notes",
     "apps.system",
 ]
 

@@ -1,17 +1,22 @@
+from rest_framework import status as http_status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from apps.access_control.services import visible_media_items_queryset
 from apps.common.permissions import IsOwnerRole
 from apps.media_library.models import MediaItem
 
-from .models import PlaybackProgress, Summary, Transcript, TranscriptSegment
+from .models import ArtifactStatus, PlaybackProgress, Summary, Transcript, TranscriptSegment
 from .serializers import (
     PlaybackProgressSerializer,
     SummarySerializer,
     TranscriptSegmentSerializer,
     TranscriptSerializer,
 )
+from .tasks import transcribe_media_item
 
 
 class PlaybackProgressViewSet(ModelViewSet):
@@ -83,3 +88,28 @@ class TranscriptSegmentViewSet(ModelViewSet):
         if transcript_id:
             queryset = queryset.filter(transcript_id=transcript_id)
         return queryset.order_by("sequence_number")
+
+
+class TriggerTranscriptionView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+
+    def post(self, request: Request, media_item_id: int) -> Response:
+        try:
+            media_item = MediaItem.objects.get(id=media_item_id, owner=request.user)
+        except MediaItem.DoesNotExist:
+            return Response({"detail": "Not found."}, status=http_status.HTTP_404_NOT_FOUND)
+
+        if Transcript.objects.filter(
+            media_item=media_item,
+            status=ArtifactStatus.PROCESSING,
+        ).exists():
+            return Response(
+                {"detail": "Transcription already in progress."},
+                status=http_status.HTTP_409_CONFLICT,
+            )
+
+        transcribe_media_item.delay(media_item.id)
+        return Response(
+            {"status": "queued", "media_item_id": media_item.id},
+            status=http_status.HTTP_202_ACCEPTED,
+        )
