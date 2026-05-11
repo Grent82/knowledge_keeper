@@ -251,7 +251,7 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
                       ) : segments.length === 0 ? (
                         <p className="empty-state">No transcript segments yet.</p>
                       ) : (
-                        <ul className="simple-list compact-list">
+                        <ul className="simple-list compact-list transcript-segment-list">
                           {segments.map((segment) => (
                             <li key={segment.id}>
                               <strong>
