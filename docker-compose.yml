@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: knowledge_keeper
       POSTGRES_PASSWORD: knowledge_keeper
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./var/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U knowledge_keeper"]
       interval: 5s
@@ -89,5 +89,4 @@ services:
       - postgres
 
 volumes:
-  postgres_data:
   media_data:
