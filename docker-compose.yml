@@ -28,7 +28,7 @@ services:
       target: dev
     volumes:
       - ./backend:/app/backend
-      - media_data:/app/var/media
+      - ./var/media:/app/var/media
     ports:
       - "9000:9000"
     env_file: .env.docker
@@ -51,7 +51,7 @@ services:
     command: celery -A config worker --loglevel=info
     volumes:
       - ./backend:/app/backend
-      - media_data:/app/var/media
+      - ./var/media:/app/var/media
     env_file: .env.docker
     environment:
       DATABASE_URL: postgresql://knowledge_keeper:knowledge_keeper@postgres:5432/knowledge_keeper
@@ -88,5 +88,4 @@ services:
     depends_on:
       - postgres
 
-volumes:
-  media_data:
+volumes: {}
