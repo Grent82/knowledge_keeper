@@ -1,9 +1,12 @@
+import logging
 import re
 import shutil
 import tempfile
 
 from celery import shared_task
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
 from .providers.factory import get_summary_provider, get_transcription_provider
@@ -150,12 +153,30 @@ def transcribe_media_item(self, media_item_id: int) -> None:
         if media_item.external_source_id:
             try:
                 result = _try_youtube_captions(media_item.external_source.source_url)
-            except Exception:
-                pass
+                if result:
+                    logger.info("Captions fetched for media_item %s (%d segments)", media_item_id, len(result.segments))
+                else:
+                    logger.info("No captions available for media_item %s, falling back to audio", media_item_id)
+            except Exception as exc:
+                logger.warning("Caption fetch failed for media_item %s: %s", media_item_id, exc)
 
         # Fall back to audio download + Whisper
         if result is None:
-            audio_path, tmpdir = _resolve_audio_path(media_item)
+            try:
+                audio_path, tmpdir = _resolve_audio_path(media_item)
+            except Exception as exc:
+                error_msg = str(exc)
+                # DRM-protected content cannot be downloaded — no point retrying
+                if "DRM" in error_msg or "format is not available" in error_msg.lower():
+                    logger.error("DRM/format error for media_item %s — marking FAILED (no retry)", media_item_id)
+                    transcript.status = ArtifactStatus.FAILED
+                    transcript.error_message = (
+                        "Dieses Video kann nicht transkribiert werden: "
+                        "Keine Untertitel verfügbar und Audio ist DRM-geschützt."
+                    )
+                    transcript.save(update_fields=["status", "error_message", "updated_at"])
+                    return
+                raise
 
             if not audio_path:
                 transcript.status = ArtifactStatus.FAILED
