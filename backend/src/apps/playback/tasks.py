@@ -39,6 +39,12 @@ def transcribe_media_item(self, media_item_id: int) -> None:
             except Exception:
                 pass
 
+        if not asset_path:
+            transcript.status = ArtifactStatus.FAILED
+            transcript.error_message = "No media file attached to this item."
+            transcript.save(update_fields=["status", "error_message", "updated_at"])
+            return
+
         result = get_transcription_provider().transcribe(asset_path)
 
         transcript.content = result.full_text

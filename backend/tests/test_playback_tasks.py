@@ -3,12 +3,18 @@ from unittest.mock import patch
 import pytest
 
 from apps.accounts.models import User, UserRole
-from apps.media_library.models import MediaItem, MediaType
+from apps.media_library.models import MediaAsset, MediaItem, MediaType
 from apps.playback.models import ArtifactStatus, Summary, Transcript, TranscriptSegment
 from apps.playback.ports import SegmentResult, TranscriptionResult
 from apps.playback.tasks import summarize_transcript, transcribe_media_item
 
 pytestmark = pytest.mark.django_db
+
+
+def _media_item_with_asset(username: str, title: str, media_type=MediaType.AUDIO) -> MediaItem:
+    owner = User.objects.create_user(username=username, role=UserRole.OWNER)
+    asset = MediaAsset.objects.create(storage_path="test/audio.mp3", created_by=owner)
+    return MediaItem.objects.create(title=title, media_type=media_type, owner=owner, asset=asset)
 
 
 @patch("apps.playback.tasks.summarize_transcript.delay")
@@ -30,12 +36,7 @@ def test_transcribe_media_item_creates_transcript_and_segments(
         ],
         language_code="en",
     )
-    owner = User.objects.create_user(username="owner-task-success", role=UserRole.OWNER)
-    media_item = MediaItem.objects.create(
-        title="Task Source",
-        media_type=MediaType.AUDIO,
-        owner=owner,
-    )
+    media_item = _media_item_with_asset("owner-task-success", "Task Source")
 
     transcribe_media_item.run(media_item.id)
 
@@ -86,12 +87,7 @@ def test_transcribe_media_item_idempotent(mock_get_provider, mock_summarize_dela
 )
 def test_transcribe_media_item_failed_on_provider_error(mock_get_provider, mock_retry):
     mock_get_provider.return_value.transcribe.side_effect = RuntimeError("provider failed")
-    owner = User.objects.create_user(username="owner-task-failure", role=UserRole.OWNER)
-    media_item = MediaItem.objects.create(
-        title="Broken Source",
-        media_type=MediaType.AUDIO,
-        owner=owner,
-    )
+    media_item = _media_item_with_asset("owner-task-failure", "Broken Source")
     mock_retry.side_effect = RuntimeError("retry requested")
 
     with pytest.raises(RuntimeError, match="retry requested"):
