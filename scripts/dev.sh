@@ -52,7 +52,7 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-BACKEND_PORT="$(find_free_port 8000)"
+BACKEND_PORT="$(find_free_port 9000)"
 
 echo "Starting backend on http://localhost:${BACKEND_PORT} ..."
 .venv/bin/python backend/manage.py runserver "${BACKEND_PORT}" >/tmp/knowledge-keeper-backend.log 2>&1 &
