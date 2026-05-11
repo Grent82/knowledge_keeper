@@ -35,12 +35,19 @@ class ExternalSourceSerializer(serializers.ModelSerializer):
 
 
 class MediaAssetSerializer(serializers.ModelSerializer):
+    uploaded_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    asset_url = serializers.CharField(read_only=True)
+    filename = serializers.CharField(read_only=True)
+
     class Meta:
         model = MediaAsset
         fields = [
             "id",
             "origin",
             "file_format",
+            "uploaded_file",
+            "asset_url",
+            "filename",
             "mime_type",
             "storage_path",
             "file_size_bytes",
@@ -52,9 +59,41 @@ class MediaAssetSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+        extra_kwargs = {
+            "storage_path": {"required": False, "allow_blank": True},
+            "mime_type": {"required": False, "allow_blank": True},
+            "file_size_bytes": {"required": False},
+            "duration_seconds": {"required": False},
+            "width": {"required": False},
+            "height": {"required": False},
+        }
+
+    def validate(self, attrs):
+        uploaded_file = attrs.get("uploaded_file")
+        storage_path = attrs.get("storage_path", "")
+        if not uploaded_file and not storage_path:
+            raise serializers.ValidationError(
+                "Provide either an uploaded_file or a storage_path."
+            )
+        return attrs
+
+    def create(self, validated_data):
+        uploaded_file = validated_data.pop("uploaded_file", None)
+        if uploaded_file is not None:
+            validated_data.setdefault("mime_type", getattr(uploaded_file, "content_type", ""))
+            validated_data.setdefault("file_size_bytes", uploaded_file.size)
+            validated_data.setdefault("storage_path", uploaded_file.name)
+        asset = MediaAsset.objects.create(uploaded_file=uploaded_file, **validated_data)
+        if uploaded_file is not None:
+            asset.storage_path = asset.uploaded_file.name
+            asset.save(update_fields=["storage_path", "updated_at"])
+        return asset
 
 
 class MediaItemSerializer(serializers.ModelSerializer):
+    asset_detail = MediaAssetSerializer(source="asset", read_only=True)
+    external_source_detail = ExternalSourceSerializer(source="external_source", read_only=True)
+
     class Meta:
         model = MediaItem
         fields = [
@@ -67,7 +106,9 @@ class MediaItemSerializer(serializers.ModelSerializer):
             "categories",
             "tags",
             "asset",
+            "asset_detail",
             "external_source",
+            "external_source_detail",
             "published_at",
             "created_at",
             "updated_at",

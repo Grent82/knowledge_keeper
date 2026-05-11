@@ -82,6 +82,10 @@ body {
   color: #51606d;
 }
 
+.detail-card {
+  min-height: 260px;
+}
+
 .auth-card {
   max-width: 460px;
 }
@@ -158,4 +162,20 @@ button {
   gap: 4px;
   padding-top: 12px;
   border-top: 1px solid rgba(23, 32, 42, 0.08);
+}
+
+.list-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #17202a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.media-player {
+  width: 100%;
+  margin-top: 18px;
+  border-radius: 16px;
+  background: #111;
 }

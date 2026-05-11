@@ -10,6 +10,7 @@ export default defineConfig({
     proxy: {
       "/api": backendTarget,
       "/admin": backendTarget,
+      "/media": backendTarget,
     },
   },
 });

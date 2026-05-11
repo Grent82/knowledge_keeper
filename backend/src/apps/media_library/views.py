@@ -1,3 +1,4 @@
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 
@@ -61,6 +62,7 @@ class ExternalSourceViewSet(ModelViewSet):
 class MediaAssetViewSet(ModelViewSet):
     serializer_class = MediaAssetSerializer
     permission_classes = [IsAuthenticated, IsOwnerRole]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         return MediaAsset.objects.filter(created_by=self.request.user)
@@ -74,7 +76,10 @@ class MediaItemViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return visible_media_items_queryset(self.request.user).prefetch_related(
+        return visible_media_items_queryset(self.request.user).select_related(
+            "asset",
+            "external_source",
+        ).prefetch_related(
             "categories",
             "tags",
         )

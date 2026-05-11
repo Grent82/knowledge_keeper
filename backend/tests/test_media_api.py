@@ -1,4 +1,5 @@
 import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole
@@ -48,6 +49,35 @@ def test_owner_can_create_media_item_from_asset_and_source():
     assert source_response.status_code == 201
     assert item_response.status_code == 201
     assert item_response.data["owner"] == owner.id
+
+
+def test_owner_can_upload_media_asset_file():
+    owner = User.objects.create_user(
+        username="owner-upload",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+    uploaded_file = SimpleUploadedFile(
+        "voice-note.mp3",
+        b"fake-audio-data",
+        content_type="audio/mpeg",
+    )
+
+    response = client.post(
+        "/api/media/assets",
+        {
+            "origin": "local_upload",
+            "file_format": "mp3",
+            "uploaded_file": uploaded_file,
+        },
+        format="multipart",
+    )
+
+    assert response.status_code == 201
+    assert response.data["filename"] == "voice-note.mp3"
+    assert response.data["asset_url"].endswith("voice-note.mp3")
 
 
 def test_restricted_user_cannot_create_media_item():

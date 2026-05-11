@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.conf import settings
 from django.db import models
 
@@ -122,6 +124,7 @@ class MediaAsset(TimestampedModel):
         choices=MediaFormat.choices,
         default=MediaFormat.OTHER,
     )
+    uploaded_file = models.FileField(upload_to="media_assets/", null=True, blank=True)
     mime_type = models.CharField(max_length=100, blank=True)
     storage_path = models.CharField(max_length=500)
     file_size_bytes = models.PositiveBigIntegerField(null=True, blank=True)
@@ -133,6 +136,18 @@ class MediaAsset(TimestampedModel):
         on_delete=models.CASCADE,
         related_name="created_media_assets",
     )
+
+    @property
+    def asset_url(self) -> str:
+        if self.uploaded_file:
+            return self.uploaded_file.url
+        return self.storage_path
+
+    @property
+    def filename(self) -> str:
+        if self.uploaded_file:
+            return Path(self.uploaded_file.name).name
+        return Path(self.storage_path).name
 
     def __str__(self) -> str:
         return self.storage_path
