@@ -6,6 +6,38 @@ from django.utils import timezone
 
 from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
 from .providers.factory import get_summary_provider, get_transcription_provider
+from .providers.vtt_parser import parse_vtt
+
+
+def _try_youtube_captions(source_url: str, tmpdir: str):
+    """Try to fetch YouTube auto-generated captions. Returns TranscriptionResult or None."""
+    import yt_dlp
+
+    ydl_opts = {
+        "skip_download": True,
+        "writeautomaticsub": True,
+        "writesubtitles": True,
+        "subtitleslangs": ["de", "en"],
+        "subtitlesformat": "vtt",
+        "outtmpl": f"{tmpdir}/sub",
+        "quiet": True,
+        "no_warnings": True,
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(source_url, download=True)
+
+    language_code = ""
+    for lang in ["de", "en"]:
+        import glob as _glob
+        matches = _glob.glob(f"{tmpdir}/sub.{lang}*.vtt")
+        if matches:
+            language_code = lang
+            vtt_text = open(matches[0], encoding="utf-8").read()
+            result = parse_vtt(vtt_text)
+            result.language_code = language_code
+            return result
+
+    return None
 
 
 def _resolve_audio_path(media_item) -> tuple[str, str | None]:
@@ -79,15 +111,31 @@ def transcribe_media_item(self, media_item_id: int) -> None:
 
     tmpdir = None
     try:
-        audio_path, tmpdir = _resolve_audio_path(media_item)
+        result = None
 
-        if not audio_path:
-            transcript.status = ArtifactStatus.FAILED
-            transcript.error_message = "No media file or external source attached."
-            transcript.save(update_fields=["status", "error_message", "updated_at"])
-            return
+        # For YouTube: try captions first (fast, no DRM issues)
+        if media_item.external_source_id:
+            caption_tmpdir = tempfile.mkdtemp(prefix="kk_captions_")
+            try:
+                result = _try_youtube_captions(
+                    media_item.external_source.source_url, caption_tmpdir
+                )
+            except Exception:
+                pass
+            finally:
+                shutil.rmtree(caption_tmpdir, ignore_errors=True)
 
-        result = get_transcription_provider().transcribe(audio_path)
+        # Fall back to audio download + Whisper
+        if result is None:
+            audio_path, tmpdir = _resolve_audio_path(media_item)
+
+            if not audio_path:
+                transcript.status = ArtifactStatus.FAILED
+                transcript.error_message = "No media file or external source attached."
+                transcript.save(update_fields=["status", "error_message", "updated_at"])
+                return
+
+            result = get_transcription_provider().transcribe(audio_path)
 
         transcript.content = result.full_text
         transcript.language_code = result.language_code
