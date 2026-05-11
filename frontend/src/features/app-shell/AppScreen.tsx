@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 
 import {
+  createCategory,
   createMediaItemFromAsset,
   createPlaybackProgress,
   createMediaItem,
+  createTag,
   fetchCategories,
   fetchMediaItems,
   fetchPlaybackProgress,
   fetchSearchSuggestions,
   fetchSession,
+  fetchTags,
   login,
   logout,
+  updateMediaItemAssignments,
   updatePlaybackProgress,
   uploadMediaAsset,
 } from "./api";
@@ -22,6 +26,7 @@ import type {
   PlaybackProgress,
   SearchSuggestions,
   SessionState,
+  Tag,
 } from "./types";
 
 const anonymousSession: SessionState = {
@@ -72,6 +77,7 @@ function collectVisibleCategoryIds(
 export function AppScreen() {
   const [session, setSession] = useState<SessionState>(anonymousSession);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [playbackEntries, setPlaybackEntries] = useState<PlaybackProgress[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -81,6 +87,9 @@ export function AppScreen() {
   const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
   const [loginError, setLoginError] = useState("");
   const [createError, setCreateError] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [tagError, setTagError] = useState("");
+  const [classificationError, setClassificationError] = useState("");
 
   useEffect(() => {
     void refreshSession();
@@ -113,14 +122,16 @@ export function AppScreen() {
   }
 
   async function refreshData() {
-    const [items, progress, nextCategories] = await Promise.all([
+    const [items, progress, nextCategories, nextTags] = await Promise.all([
       fetchMediaItems(),
       fetchPlaybackProgress(),
       fetchCategories(),
+      fetchTags(),
     ]);
     setMediaItems(items);
     setPlaybackEntries(progress);
     setCategories(nextCategories);
+    setTags(nextTags);
     setSelectedMediaItem((currentSelected) => {
       if (!currentSelected) {
         return items[0] ?? null;
@@ -171,6 +182,7 @@ export function AppScreen() {
     setMediaItems([]);
     setPlaybackEntries([]);
     setCategories([]);
+    setTags([]);
     setSearchQuery("");
     setSearchSuggestions(null);
     setSelectedCategoryId(null);
@@ -219,6 +231,43 @@ export function AppScreen() {
     });
   }
 
+  async function handleCreateCategory(name: string, parentId: number | null) {
+    try {
+      setCategoryError("");
+      await createCategory(name, parentId);
+      await refreshData();
+    } catch (error) {
+      setCategoryError(error instanceof Error ? error.message : "Category creation failed.");
+    }
+  }
+
+  async function handleCreateTag(name: string) {
+    try {
+      setTagError("");
+      await createTag(name);
+      await refreshData();
+    } catch (error) {
+      setTagError(error instanceof Error ? error.message : "Tag creation failed.");
+    }
+  }
+
+  async function handleUpdateMediaItemAssignments(
+    mediaItemId: number,
+    categoryIds: number[],
+    tagIds: number[],
+  ) {
+    try {
+      setClassificationError("");
+      const updatedMediaItem = await updateMediaItemAssignments(mediaItemId, categoryIds, tagIds);
+      await refreshData();
+      setSelectedMediaItem(updatedMediaItem);
+    } catch (error) {
+      setClassificationError(
+        error instanceof Error ? error.message : "Media classification update failed.",
+      );
+    }
+  }
+
   if (!session.is_authenticated) {
     return (
       <>
@@ -237,9 +286,13 @@ export function AppScreen() {
   return (
     <Dashboard
       createError={createError}
+      categoryError={categoryError}
+      classificationError={classificationError}
       categories={categories}
       mediaItems={visibleMediaItems}
       onCreateMediaItem={handleCreateMediaItem}
+      onCreateCategory={handleCreateCategory}
+      onCreateTag={handleCreateTag}
       onChangeSearchQuery={setSearchQuery}
       onLogout={handleLogout}
       onPersistProgress={handlePersistProgress}
@@ -248,13 +301,17 @@ export function AppScreen() {
       }}
       onSelectMediaItem={setSelectedMediaItem}
       onSelectTag={setSelectedTagId}
+      onUpdateMediaItemAssignments={handleUpdateMediaItemAssignments}
       onUploadMediaItem={handleUploadMediaItem}
       playbackEntries={playbackEntries}
       searchQuery={searchQuery}
       searchSuggestions={searchSuggestions}
       selectedCategoryId={selectedCategoryId}
+      selectedTagId={selectedTagId}
       selectedMediaItem={selectedMediaItem}
       session={session}
+      tagError={tagError}
+      tags={tags}
     />
   );
 }

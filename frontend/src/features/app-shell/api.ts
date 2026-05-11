@@ -96,6 +96,23 @@ export function fetchSearchSuggestions(query: string) {
   return request<SearchSuggestions>(`/api/media/search?q=${encodeURIComponent(query)}`);
 }
 
+export function createCategory(name: string, parent: number | null) {
+  return request<Category>("/api/media/categories", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      parent,
+    }),
+  });
+}
+
+export function createTag(name: string) {
+  return request<Tag>("/api/media/tags", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
+}
+
 export function fetchPlaybackProgress() {
   return request<PlaybackProgress[]>("/api/playback/progress");
 }
@@ -141,6 +158,20 @@ export function createMediaItemFromAsset(
       asset: assetId,
       categories: [],
       tags: [],
+    }),
+  });
+}
+
+export function updateMediaItemAssignments(
+  mediaItemId: number,
+  categories: number[],
+  tags: number[],
+) {
+  return request<MediaItem>(`/api/media/items/${mediaItemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      categories,
+      tags,
     }),
   });
 }

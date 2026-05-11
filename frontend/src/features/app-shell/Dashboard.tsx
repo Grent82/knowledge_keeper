@@ -1,7 +1,10 @@
 import { Breadcrumbs } from "./Breadcrumbs";
+import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
 import { MediaPlayerCard } from "./MediaPlayerCard";
+import { MediaClassificationCard } from "./MediaClassificationCard";
 import { SearchPanel } from "./SearchPanel";
+import { TagManager } from "./TagManager";
 import { UploadMediaForm } from "./UploadMediaForm";
 import type {
   Category,
@@ -9,23 +12,31 @@ import type {
   PlaybackProgress,
   SearchSuggestions,
   SessionState,
+  Tag,
 } from "./types";
 
 type DashboardProps = {
   session: SessionState;
   categories: Category[];
+  tags: Tag[];
   mediaItems: MediaItem[];
   playbackEntries: PlaybackProgress[];
   createError: string;
+  categoryError: string;
+  tagError: string;
+  classificationError: string;
   searchQuery: string;
   searchSuggestions: SearchSuggestions | null;
   selectedMediaItem: MediaItem | null;
   selectedCategoryId: number | null;
+  selectedTagId: number | null;
   onLogout: () => Promise<void>;
   onCreateMediaItem: (title: string, mediaType: string, description: string) => Promise<void>;
+  onCreateCategory: (name: string, parentId: number | null) => Promise<void>;
+  onCreateTag: (name: string) => Promise<void>;
   onSelectMediaItem: (mediaItem: MediaItem) => void;
   onSelectCategory: (categoryId: number | null) => void;
-  onSelectTag: (tagId: number) => void;
+  onSelectTag: (tagId: number | null) => void;
   onChangeSearchQuery: (value: string) => void;
   onUploadMediaItem: (
     file: File,
@@ -33,26 +44,39 @@ type DashboardProps = {
     mediaType: string,
     description: string,
   ) => Promise<void>;
+  onUpdateMediaItemAssignments: (
+    mediaItemId: number,
+    categoryIds: number[],
+    tagIds: number[],
+  ) => Promise<void>;
   onPersistProgress: (mediaItemId: number, currentTime: number, duration: number) => Promise<void>;
 };
 
 export function Dashboard({
   session,
   categories,
+  tags,
   mediaItems,
   playbackEntries,
   createError,
+  categoryError,
+  tagError,
+  classificationError,
   searchQuery,
   searchSuggestions,
   selectedMediaItem,
   selectedCategoryId,
+  selectedTagId,
   onLogout,
   onCreateMediaItem,
+  onCreateCategory,
+  onCreateTag,
   onChangeSearchQuery,
   onSelectCategory,
   onSelectMediaItem,
   onSelectTag,
   onUploadMediaItem,
+  onUpdateMediaItemAssignments,
   onPersistProgress,
 }: DashboardProps) {
   const selectedProgressEntry =
@@ -94,7 +118,9 @@ export function Dashboard({
           onSelectMediaItem={onSelectMediaItem}
           onSelectTag={onSelectTag}
           query={searchQuery}
+          selectedTagId={selectedTagId}
           suggestions={searchSuggestions}
+          tags={tags}
         />
 
         <article className="card">
@@ -150,6 +176,19 @@ export function Dashboard({
         {session.role === "owner" ? (
           <>
             <UploadMediaForm error={createError} onSubmit={onUploadMediaItem} />
+            <CategoryManager
+              categories={categories}
+              error={categoryError}
+              onSubmit={onCreateCategory}
+            />
+            <TagManager error={tagError} onSubmit={onCreateTag} />
+            <MediaClassificationCard
+              categories={categories}
+              error={classificationError}
+              mediaItem={selectedMediaItem}
+              onSubmit={onUpdateMediaItemAssignments}
+              tags={tags}
+            />
             <article className="card">
               <h2>Create Basic Media Item</h2>
               <p className="muted">Fallback owner-only entry without file upload.</p>

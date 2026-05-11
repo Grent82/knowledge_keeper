@@ -241,6 +241,14 @@ button {
   margin-top: 12px;
 }
 
+.inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .suggestion-layout {
   display: grid;
   gap: 18px;
@@ -250,6 +258,23 @@ button {
 .suggestion-group h3 {
   margin: 0;
   font-size: 0.95rem;
+}
+
+.checkbox-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #17202a;
+}
+
+.checkbox-option input {
+  margin-top: 3px;
 }
 
 .media-player {

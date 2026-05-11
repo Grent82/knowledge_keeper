@@ -1,12 +1,14 @@
 import type { Category, MediaItem, SearchSuggestions, Tag } from "./types";
 
 type SearchPanelProps = {
+  tags: Tag[];
   query: string;
   suggestions: SearchSuggestions | null;
+  selectedTagId: number | null;
   onChangeQuery: (value: string) => void;
   onSelectMediaItem: (mediaItem: MediaItem) => void;
   onSelectCategory: (categoryId: number) => void;
-  onSelectTag: (tagId: number) => void;
+  onSelectTag: (tagId: number | null) => void;
 };
 
 function SuggestionGroup({
@@ -27,16 +29,19 @@ function SuggestionGroup({
 }
 
 export function SearchPanel({
+  tags,
   query,
   suggestions,
+  selectedTagId,
   onChangeQuery,
   onSelectMediaItem,
   onSelectCategory,
   onSelectTag,
 }: SearchPanelProps) {
   const categories = suggestions?.categories ?? [];
-  const tags = suggestions?.tags ?? [];
+  const suggestionTags = suggestions?.tags ?? [];
   const mediaItems = suggestions?.media_items ?? [];
+  const selectedTag = tags.find((tag) => tag.id === selectedTagId) ?? null;
 
   return (
     <article className="card search-card">
@@ -49,6 +54,14 @@ export function SearchPanel({
         type="search"
         value={query}
       />
+      {selectedTag ? (
+        <div className="inline-actions">
+          <p className="muted">Tag filter: {selectedTag.name}</p>
+          <button className="secondary-button" onClick={() => onSelectTag(null)} type="button">
+            Clear tag filter
+          </button>
+        </div>
+      ) : null}
 
       {query ? (
         <div className="suggestion-layout">
@@ -71,9 +84,9 @@ export function SearchPanel({
           </SuggestionGroup>
 
           <SuggestionGroup emptyLabel="No tag matches." title="Tags">
-            {tags.length > 0 ? (
+            {suggestionTags.length > 0 ? (
               <ul className="simple-list compact-list">
-                {tags.map((tag: Tag) => (
+                {suggestionTags.map((tag: Tag) => (
                   <li key={tag.id}>
                     <button className="list-button" onClick={() => onSelectTag(tag.id)} type="button">
                       {tag.name}
