@@ -1,4 +1,5 @@
-.PHONY: help doctor beads-lint quality format lint test typecheck backend-check frontend-install backend-install
+.PHONY: help doctor beads-lint quality format lint test typecheck backend-check frontend-install backend-install \
+        docker-up docker-down docker-logs docker-build docker-prod-build docker-migrate docker-shell
 
 PYTHON := .venv/bin/python
 PIP := .venv/bin/pip
@@ -52,3 +53,26 @@ backend-install:
 	python3 -m venv .venv
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ./backend pytest pytest-django ruff mypy
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+docker-up: ## Start dev stack (postgres, redis, backend, celery, frontend)
+	@[ -f .env.docker ] || cp .env.docker.example .env.docker
+	docker compose up
+
+docker-down: ## Stop and remove dev containers
+	docker compose down
+
+docker-logs: ## Tail logs from all dev containers
+	docker compose logs -f
+
+docker-build: ## Rebuild dev images
+	docker compose build
+
+docker-migrate: ## Run migrations inside the running backend container
+	docker compose exec backend python backend/manage.py migrate
+
+docker-shell: ## Open a shell in the backend container
+	docker compose exec backend bash
+
+docker-prod-build: ## Build production images
+	docker compose -f docker-compose.prod.yml build

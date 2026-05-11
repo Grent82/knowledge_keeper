@@ -1,6 +1,25 @@
+import re
+from urllib.parse import parse_qs, urlparse
+
 from rest_framework import serializers
 
 from .models import Category, ExternalSource, MediaAsset, MediaItem, Tag
+
+
+def _extract_youtube_id(url: str) -> str:
+    """Extract YouTube video ID from various URL formats."""
+    parsed = urlparse(url)
+    if parsed.hostname in ("youtu.be",):
+        return parsed.path.lstrip("/").split("?")[0]
+    if parsed.hostname in ("www.youtube.com", "youtube.com", "m.youtube.com"):
+        qs = parse_qs(parsed.query)
+        if "v" in qs:
+            return qs["v"][0]
+        # /embed/<id> or /shorts/<id>
+        match = re.match(r"^/(embed|shorts|v)/([^/?&]+)", parsed.path)
+        if match:
+            return match.group(2)
+    return ""
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -32,6 +51,14 @@ class ExternalSourceSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_by", "created_at", "updated_at"]
+
+    def validate(self, attrs: dict) -> dict:
+        provider = attrs.get("provider") or (self.instance.provider if self.instance else "")
+        source_url = attrs.get("source_url") or (self.instance.source_url if self.instance else "")
+        # Auto-extract external_id for YouTube if not provided
+        if provider == "youtube" and not attrs.get("external_id") and source_url:
+            attrs["external_id"] = _extract_youtube_id(source_url)
+        return attrs
 
 
 class MediaAssetSerializer(serializers.ModelSerializer):

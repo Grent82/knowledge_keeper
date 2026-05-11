@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: true,  // Bind to 0.0.0.0 — required for Docker dev
     proxy: {
       "/api": backendTarget,
       "/admin": backendTarget,

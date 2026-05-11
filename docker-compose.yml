@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: knowledge_keeper
+      POSTGRES_USER: knowledge_keeper
+      POSTGRES_PASSWORD: knowledge_keeper
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge_keeper"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    volumes:
+      - ./backend:/app/backend
+      - media_data:/app/var/media
+    ports:
+      - "9000:9000"
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgresql://knowledge_keeper:knowledge_keeper@postgres:5432/knowledge_keeper
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: dev
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app/backend
+      - media_data:/app/var/media
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgresql://knowledge_keeper:knowledge_keeper@postgres:5432/knowledge_keeper
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+    volumes:
+      - ./frontend:/app/frontend
+      # Preserve container node_modules (don't overwrite with host)
+      - /app/frontend/node_modules
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_BACKEND_TARGET: http://backend:9000
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  media_data:

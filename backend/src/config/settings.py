@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 from pathlib import Path
 
 
@@ -7,8 +8,8 @@ def env_list(name: str, default: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-SECRET_KEY = "change-me"
-DEBUG = True
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-only-for-dev")
+DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 CSRF_TRUSTED_ORIGINS = env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
@@ -72,11 +73,26 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+_database_url = os.getenv("DATABASE_URL")
+if _database_url:
+    _parsed = urllib.parse.urlparse(_database_url)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _parsed.path.lstrip("/"),
+            "USER": _parsed.username,
+            "PASSWORD": _parsed.password,
+            "HOST": _parsed.hostname,
+            "PORT": str(_parsed.port or 5432),
+            "CONN_MAX_AGE": 600,
+        }
     }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
 }
 
 LANGUAGE_CODE = "en-us"
@@ -85,6 +101,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR.parent / "var" / "static"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR.parent / "var" / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
