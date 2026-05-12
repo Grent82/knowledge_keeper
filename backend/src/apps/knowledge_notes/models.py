@@ -5,6 +5,14 @@ from apps.media_library.models import MediaItem
 from apps.playback.models import Transcript
 
 
+class NoteKind(models.TextChoices):
+    INSIGHT = "insight", "Insight"
+    ACTION = "action", "Action"
+    REFLECTION = "reflection", "Reflection"
+    QUESTION = "question", "Question"
+    GENERAL = "general", "General"
+
+
 class KnowledgeNote(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -13,6 +21,12 @@ class KnowledgeNote(models.Model):
     )
     title = models.CharField(max_length=255)
     content_markdown = models.TextField(blank=True)
+    kind = models.CharField(
+        max_length=20,
+        choices=NoteKind.choices,
+        default=NoteKind.GENERAL,
+    )
+    ai_generated = models.BooleanField(default=False)
     media_item = models.ForeignKey(
         MediaItem,
         null=True,

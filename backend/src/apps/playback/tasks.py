@@ -249,9 +249,11 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
 
     media_item = transcript.media_item
 
+    # Idempotency: scoped to (media_item, transcript, kind) — each kind is independent.
     existing = Summary.objects.filter(
         media_item=media_item,
         transcript=transcript,
+        kind=kind,
         status=ArtifactStatus.READY,
     ).first()
     if existing:

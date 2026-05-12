@@ -6,6 +6,7 @@ from .views import (
     SummaryViewSet,
     TranscriptSegmentViewSet,
     TranscriptViewSet,
+    TriggerSummaryView,
     TriggerTranscriptionView,
 )
 
@@ -20,5 +21,10 @@ urlpatterns = router.urls + [
         "trigger/<int:media_item_id>/",
         TriggerTranscriptionView.as_view(),
         name="trigger-transcription",
+    ),
+    path(
+        "trigger/<int:media_item_id>/summary/",
+        TriggerSummaryView.as_view(),
+        name="trigger-summary",
     ),
 ]

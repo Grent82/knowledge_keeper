@@ -28,6 +28,7 @@ class TranscriptProvider(models.TextChoices):
 class SummaryKind(models.TextChoices):
     SHORT = "short", "Short"
     DETAILED = "detailed", "Detailed"
+    BULLET = "bullet", "Bullet"
 
 
 class TimestampedModel(models.Model):

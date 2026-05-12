@@ -9,14 +9,21 @@ from apps.access_control.services import visible_media_items_queryset
 from apps.common.permissions import IsOwnerRole
 from apps.media_library.models import MediaItem
 
-from .models import ArtifactStatus, PlaybackProgress, Summary, Transcript, TranscriptSegment
+from .models import (
+    ArtifactStatus,
+    PlaybackProgress,
+    Summary,
+    SummaryKind,
+    Transcript,
+    TranscriptSegment,
+)
 from .serializers import (
     PlaybackProgressSerializer,
     SummarySerializer,
     TranscriptSegmentSerializer,
     TranscriptSerializer,
 )
-from .tasks import transcribe_media_item
+from .tasks import summarize_transcript, transcribe_media_item
 
 
 class PlaybackProgressViewSet(ModelViewSet):
@@ -111,5 +118,63 @@ class TriggerTranscriptionView(APIView):
         transcribe_media_item.delay(media_item.id)
         return Response(
             {"status": "queued", "media_item_id": media_item.id},
+            status=http_status.HTTP_202_ACCEPTED,
+        )
+
+
+class TriggerSummaryView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+
+    def post(self, request: Request, media_item_id: int) -> Response:
+        kind = request.data.get("kind", SummaryKind.SHORT)
+        if kind not in SummaryKind.values:
+            return Response(
+                {"detail": f"Invalid kind. Choices: {', '.join(SummaryKind.values)}"},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            media_item = MediaItem.objects.get(id=media_item_id, owner=request.user)
+        except MediaItem.DoesNotExist:
+            return Response({"detail": "Not found."}, status=http_status.HTTP_404_NOT_FOUND)
+
+        transcript = (
+            Transcript.objects.filter(media_item=media_item, status=ArtifactStatus.READY)
+            .order_by("-created_at")
+            .first()
+        )
+        if transcript is None:
+            return Response(
+                {"detail": "No ready transcript found for this media item."},
+                status=http_status.HTTP_409_CONFLICT,
+            )
+
+        existing = Summary.objects.filter(
+            media_item=media_item,
+            transcript=transcript,
+            kind=kind,
+            status=ArtifactStatus.READY,
+        ).first()
+        if existing:
+            return Response(
+                {"status": "ready", "summary_id": existing.id, "kind": kind},
+                status=http_status.HTTP_200_OK,
+            )
+
+        in_progress = Summary.objects.filter(
+            media_item=media_item,
+            transcript=transcript,
+            kind=kind,
+            status=ArtifactStatus.PROCESSING,
+        ).exists()
+        if in_progress:
+            return Response(
+                {"detail": f"Summary of kind '{kind}' is already being generated."},
+                status=http_status.HTTP_409_CONFLICT,
+            )
+
+        summarize_transcript.delay(transcript.id, kind=kind)
+        return Response(
+            {"status": "queued", "media_item_id": media_item.id, "kind": kind},
             status=http_status.HTTP_202_ACCEPTED,
         )

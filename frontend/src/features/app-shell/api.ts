@@ -173,6 +173,16 @@ export async function triggerTranscription(
   return request(`/api/playback/trigger/${mediaItemId}/`, { method: "POST" });
 }
 
+export async function triggerSummary(
+  mediaItemId: number,
+  kind: "short" | "detailed" | "bullet",
+): Promise<{ status: string; media_item_id?: number; summary_id?: number; kind: string }> {
+  return request(`/api/playback/trigger/${mediaItemId}/summary/`, {
+    method: "POST",
+    body: JSON.stringify({ kind }),
+  });
+}
+
 export async function fetchKnowledgeNotes(mediaItemId?: number): Promise<KnowledgeNote[]> {
   const params = mediaItemId ? `?media_item=${mediaItemId}` : "";
   return request(`/api/knowledge-notes/${params}`);
@@ -191,6 +201,16 @@ export async function updateKnowledgeNote(
 
 export async function deleteKnowledgeNote(id: number): Promise<void> {
   return request(`/api/knowledge-notes/${id}`, { method: "DELETE" });
+}
+
+export async function triggerKnowledgeNoteGeneration(
+  transcriptId: number,
+  force = false,
+): Promise<{ status: string; transcript_id: number }> {
+  return request(`/api/knowledge-notes/generate/${transcriptId}/`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
 }
 
 export function fetchCategoryVisibilityAssignments() {

@@ -11,10 +11,12 @@ class KnowledgeNoteSerializer(serializers.ModelSerializer):
             "owner",
             "title",
             "content_markdown",
+            "kind",
+            "ai_generated",
             "media_item",
             "transcript",
             "linked_notes",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "owner", "created_at", "updated_at"]
+        read_only_fields = ["id", "owner", "ai_generated", "created_at", "updated_at"]

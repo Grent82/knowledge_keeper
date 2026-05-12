@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { ApiError, fetchSummaries, fetchTranscriptSegments, fetchTranscripts, triggerTranscription } from "./api";
+import { ApiError, fetchSummaries, fetchTranscriptSegments, fetchTranscripts, triggerKnowledgeNoteGeneration, triggerSummary, triggerTranscription } from "./api";
 import type { MediaItem, Summary, Transcript, TranscriptSegment } from "./types";
 
 type TranscriptPanelProps = { mediaItem: MediaItem };
@@ -52,6 +52,8 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
   const [loading, setLoading] = useState(false);
   const [segmentLoading, setSegmentLoading] = useState(false);
   const [triggerLoading, setTriggerLoading] = useState(false);
+  const [summaryTriggerLoading, setSummaryTriggerLoading] = useState<string | null>(null);
+  const [noteGenerationLoading, setNoteGenerationLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
   const shouldShowTriggerButton =
@@ -160,6 +162,53 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
     }
   }
 
+  async function handleTriggerSummary(kind: "short" | "detailed" | "bullet"): Promise<void> {
+    setSummaryTriggerLoading(kind);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const response = await triggerSummary(mediaItem.id, kind);
+      if (response.status === "ready") {
+        setInfoMessage(`${kind} summary ist bereits vorhanden.`);
+      } else {
+        setInfoMessage(`${kind} summary wird generiert…`);
+        await loadArtifacts();
+      }
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.status === 409) {
+        setInfoMessage(nextError.message);
+      } else {
+        setError(nextError instanceof Error ? nextError.message : "Summary request failed.");
+      }
+    } finally {
+      setSummaryTriggerLoading(null);
+    }
+  }
+
+  async function handleGenerateNotes(transcriptId: number): Promise<void> {
+    setNoteGenerationLoading(true);
+    setError("");
+    setInfoMessage("");
+
+    try {
+      const response = await triggerKnowledgeNoteGeneration(transcriptId);
+      if (response.status === "exists") {
+        setInfoMessage("Knowledge Notes bereits vorhanden. Verwende 'force', um neu zu generieren.");
+      } else {
+        setInfoMessage("Knowledge Notes werden generiert…");
+      }
+    } catch (nextError) {
+      if (nextError instanceof ApiError && nextError.status === 409) {
+        setInfoMessage(nextError.message);
+      } else {
+        setError(nextError instanceof Error ? nextError.message : "Note generation request failed.");
+      }
+    } finally {
+      setNoteGenerationLoading(false);
+    }
+  }
+
   return (
     <article className="card transcript-card">
       <div className="card-header">
@@ -179,6 +228,30 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
 
       <div className="artifact-section">
         <h3>Summaries</h3>
+        {transcripts.some((t) => t.status === "ready") ? (
+          <div className="artifact-actions">
+            {(["detailed", "bullet"] as const).map((kind) => {
+              const existing = summaries.find((s) => s.kind === kind);
+              const isGenerating = summaryTriggerLoading === kind;
+              const isReady = existing?.status === "ready";
+              const isProcessing = existing?.status === "processing" || existing?.status === "pending";
+              return (
+                <button
+                  key={kind}
+                  disabled={isGenerating || isProcessing}
+                  onClick={() => void handleTriggerSummary(kind)}
+                  type="button"
+                >
+                  {isGenerating || isProcessing
+                    ? `${kind} wird generiert…`
+                    : isReady
+                      ? `${kind} neu generieren`
+                      : `${kind} generieren`}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         {summaries.length === 0 && !loading ? (
           <p className="empty-state">No summaries yet.</p>
         ) : (
@@ -263,6 +336,15 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
                           ))}
                         </ul>
                       )}
+                      <div className="artifact-actions">
+                        <button
+                          disabled={noteGenerationLoading}
+                          onClick={() => void handleGenerateNotes(transcript.id)}
+                          type="button"
+                        >
+                          {noteGenerationLoading ? "Notizen werden generiert…" : "Knowledge Notes generieren"}
+                        </button>
+                      </div>
                     </div>
                   ) : null}
                 </li>
