@@ -121,7 +121,10 @@ def test_summarize_transcript_creates_summary(mock_get_provider):
     assert summary.status == ArtifactStatus.READY
     assert summary.content == "Short summary"
     assert summary.generated_at is not None
-    mock_get_provider.return_value.summarize.assert_called_once_with("Long transcript body", kind="short")
+    mock_get_provider.return_value.summarize.assert_called_once_with(
+        "Long transcript body",
+        kind="short",
+    )
 
 
 def test_summarize_transcript_skips_if_not_ready():

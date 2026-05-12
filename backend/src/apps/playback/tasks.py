@@ -6,11 +6,11 @@ import tempfile
 from celery import shared_task
 from django.utils import timezone
 
-logger = logging.getLogger(__name__)
-
 from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
+from .ports import SegmentResult, TranscriptionResult
 from .providers.factory import get_summary_provider, get_transcription_provider
-from .ports import TranscriptionResult, SegmentResult
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_youtube_id(url: str) -> str | None:
@@ -26,7 +26,7 @@ def _extract_youtube_id(url: str) -> str | None:
 
 
 def _try_youtube_captions(source_url: str):
-    """Fetch YouTube captions via youtube-transcript-api v1.x. Returns TranscriptionResult or None."""
+    """Fetch YouTube captions via youtube-transcript-api v1.x."""
     from youtube_transcript_api import YouTubeTranscriptApi
     from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 
@@ -104,7 +104,8 @@ def _resolve_audio_path(media_item) -> tuple[str, str | None]:
                 "http_headers": {
                     "User-Agent": (
                         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-                        "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+                        "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+                        "Version/17.0 Mobile/15E148 Safari/604.1"
                     ),
                 },
             }
@@ -154,9 +155,16 @@ def transcribe_media_item(self, media_item_id: int) -> None:
             try:
                 result = _try_youtube_captions(media_item.external_source.source_url)
                 if result:
-                    logger.info("Captions fetched for media_item %s (%d segments)", media_item_id, len(result.segments))
+                    logger.info(
+                        "Captions fetched for media_item %s (%d segments)",
+                        media_item_id,
+                        len(result.segments),
+                    )
                 else:
-                    logger.info("No captions available for media_item %s, falling back to audio", media_item_id)
+                    logger.info(
+                        "No captions available for media_item %s, falling back to audio",
+                        media_item_id,
+                    )
             except Exception as exc:
                 logger.warning("Caption fetch failed for media_item %s: %s", media_item_id, exc)
 
@@ -168,7 +176,10 @@ def transcribe_media_item(self, media_item_id: int) -> None:
                 error_msg = str(exc)
                 # DRM-protected content cannot be downloaded — no point retrying
                 if "DRM" in error_msg or "format is not available" in error_msg.lower():
-                    logger.error("DRM/format error for media_item %s — marking FAILED (no retry)", media_item_id)
+                    logger.error(
+                        "DRM/format error for media_item %s — marking FAILED (no retry)",
+                        media_item_id,
+                    )
                     transcript.status = ArtifactStatus.FAILED
                     transcript.error_message = (
                         "Dieses Video kann nicht transkribiert werden: "
