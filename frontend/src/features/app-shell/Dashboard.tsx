@@ -294,15 +294,19 @@ export function Dashboard({
 
       <section className="dashboard-workspace">
         <aside className="dashboard-sidebar">
-          <nav aria-label="Library navigation">
-          <CategoryTree
-            categories={categories}
-            onSelectCategory={onSelectCategory}
-            selectedCategoryId={selectedCategoryId}
-          />
-          </nav>
+          <div className="dashboard-sidebar-surface">
+            <nav aria-label="Library navigation">
+              <CategoryTree
+                categories={categories}
+                onSelectCategory={onSelectCategory}
+                selectedCategoryId={selectedCategoryId}
+                variant="sidebar"
+              />
+            </nav>
+          </div>
         </aside>
         <div className="dashboard-main">
+          <div className="dashboard-main-stack">
           <MediaLibraryPanel
             filterMediaType={filterMediaType}
             filterStatus={filterStatus}
@@ -328,6 +332,7 @@ export function Dashboard({
           {session.role === "owner" && selectedMediaItem ? (
             <TranscriptPanel mediaItem={selectedMediaItem} />
           ) : null}
+          </div>
         </div>
       </section>
 

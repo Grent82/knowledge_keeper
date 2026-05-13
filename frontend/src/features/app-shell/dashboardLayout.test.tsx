@@ -88,7 +88,9 @@ describe("Dashboard layout", () => {
     expect(markup).toContain("dashboard-search-row");
     expect(markup).toContain("dashboard-workspace");
     expect(markup).toContain("dashboard-sidebar");
+    expect(markup).toContain("dashboard-sidebar-surface");
     expect(markup).toContain("dashboard-main");
+    expect(markup).toContain("dashboard-main-stack");
   });
 });
 

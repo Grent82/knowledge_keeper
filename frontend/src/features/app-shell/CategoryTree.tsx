@@ -4,6 +4,7 @@ type CategoryTreeProps = {
   categories: Category[];
   selectedCategoryId: number | null;
   onSelectCategory: (categoryId: number | null) => void;
+  variant?: "card" | "sidebar";
 };
 
 type CategoryNode = Category & {
@@ -69,11 +70,13 @@ export function CategoryTree({
   categories,
   selectedCategoryId,
   onSelectCategory,
+  variant = "card",
 }: CategoryTreeProps) {
   const roots = buildTree(categories);
+  const classes = variant === "sidebar" ? "tree-card tree-card-sidebar" : "card tree-card";
 
   return (
-    <article className="card tree-card">
+    <section className={classes}>
       <div className="tree-header">
         <h2>Categories</h2>
         <button className="secondary-button" onClick={() => onSelectCategory(null)} type="button">
@@ -94,6 +97,6 @@ export function CategoryTree({
           ))}
         </ul>
       )}
-    </article>
+    </section>
   );
 }
