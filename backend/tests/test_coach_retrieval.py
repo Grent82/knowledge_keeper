@@ -57,13 +57,14 @@ def test_retrieve_segments_uses_provider_and_limits_results(settings):
         ],
     )
 
-    results = retrieve_segments("Wie lerne ich fokussierter?", owner=owner, limit=1)
+    results = retrieve_segments("Wie lerne ich mit Fokus?", owner=owner, limit=1)
 
     assert len(results) == 1
     result = results[0]
     assert result.media_item_id == item.id
     assert result.transcript_id is not None
     assert result.segment_id is not None
+    assert result.snippet
     assert result.start_seconds is not None
     assert result.score > 0
 
@@ -85,6 +86,48 @@ def test_retrieve_segments_filters_to_owner(settings):
 
     assert results
     assert {result.media_item_id for result in results} == {visible_item.id}
+
+
+def test_retrieve_segments_ignores_stopword_only_matches(settings):
+    from apps.coach.services import retrieve_segments
+
+    settings.RETRIEVAL_PROVIDER = "stub"
+    owner = _owner("coach-stopword-owner")
+    item = _media_item(owner, "Angst")
+    _transcript_with_segments(
+        item,
+        [
+            "Ich fuehle mich sicherer, wenn ich langsam atme.",
+            "Aengste werden nicht sofort weg, aber sie koennen kleiner werden.",
+        ],
+    )
+
+    results = retrieve_segments("Wie werde ich meine Aengste los?", owner=owner, limit=5)
+
+    assert results
+    assert all("aengste" in result.content.lower() for result in results)
+
+
+def test_retrieve_segments_builds_readable_snippet_from_neighboring_segments(settings):
+    from apps.coach.services import retrieve_segments
+
+    settings.RETRIEVAL_PROVIDER = "stub"
+    owner = _owner("coach-snippet-owner")
+    item = _media_item(owner, "Kontext")
+    _transcript_with_segments(
+        item,
+        [
+            "Wenn Angst aufkommt, hilft zuerst ein kurzer Halt.",
+            "Dann frage ich mich, was ich gerade wirklich befuerchte.",
+            "Aus diesem Schritt entsteht oft wieder mehr Orientierung im Alltag.",
+        ],
+    )
+
+    results = retrieve_segments("wirklich befuerchte", owner=owner, limit=1)
+
+    assert len(results) == 1
+    assert "Wenn Angst aufkommt" in results[0].snippet
+    assert "wirklich befuerchte" in results[0].snippet
 
 
 @pytest.mark.skipif(connection.vendor != "postgresql", reason="requires PostgreSQL FTS")

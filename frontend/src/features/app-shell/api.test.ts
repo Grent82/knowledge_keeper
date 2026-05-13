@@ -11,11 +11,13 @@ describe("postCoachQuestion", () => {
         status: 200,
         json: async () => ({
           answer: "Arbeite in klaren Fokusbloecken.",
+          response_mode: "grounded_answer",
+          source_semantics: "related_sources",
           cited_segments: [
             {
               segment_id: 1,
               media_item_id: 2,
-              content: "Fokus braucht Wiederholung.",
+              snippet: "Fokus braucht Wiederholung.",
               start_seconds: "12.500",
             },
           ],
@@ -41,6 +43,8 @@ describe("postCoachQuestion", () => {
       }),
     );
     expect(result.answer).toContain("Fokus");
+    expect(result.response_mode).toBe("grounded_answer");
+    expect(result.source_semantics).toBe("related_sources");
     expect(result.cited_segments).toHaveLength(1);
   });
 });

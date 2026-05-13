@@ -20,7 +20,7 @@ class CoachChatView(APIView):
         history = serializer.validated_data.get("history", [])
 
         cited_segments = retrieve_segments(question, owner=request.user, limit=5)
-        answer = get_chat_provider().generate_answer(
+        coach_answer = get_chat_provider().generate_answer(
             question=question,
             history=history,
             segments=cited_segments,
@@ -28,12 +28,14 @@ class CoachChatView(APIView):
 
         return Response(
             {
-                "answer": answer,
+                "answer": coach_answer.answer,
+                "response_mode": coach_answer.mode,
+                "source_semantics": "related_sources",
                 "cited_segments": [
                     {
                         "segment_id": segment.segment_id,
                         "media_item_id": segment.media_item_id,
-                        "content": segment.content,
+                        "snippet": segment.snippet,
                         "start_seconds": segment.start_seconds,
                     }
                     for segment in cited_segments

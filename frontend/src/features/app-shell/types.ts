@@ -141,11 +141,13 @@ export type CoachHistoryEntry = {
 export type CoachCitedSegment = {
   segment_id: number;
   media_item_id: number;
-  content: string;
+  snippet: string;
   start_seconds: string | null;
 };
 
 export type CoachChatResponse = {
   answer: string;
+  response_mode: "grounded_answer" | "sources_only";
+  source_semantics: "related_sources";
   cited_segments: CoachCitedSegment[];
 };

@@ -5,7 +5,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole
-from apps.coach.ports import ScoredSegment
+from apps.coach.ports import CoachAnswer, ScoredSegment
 
 pytestmark = pytest.mark.django_db
 
@@ -27,12 +27,14 @@ def test_chat_endpoint_returns_answer_and_citations(mock_retrieve_segments, mock
             transcript_id=22,
             media_item_id=33,
             content="Fokus entsteht durch klare Wiederholung.",
+            snippet="Fokus entsteht durch klare Wiederholung.",
             score=0.9,
             start_seconds=Decimal("12.500"),
         )
     ]
-    mock_get_chat_provider.return_value.generate_answer.return_value = (
-        "Arbeite mit klaren Wiederholungsblaecken."
+    mock_get_chat_provider.return_value.generate_answer.return_value = CoachAnswer(
+        answer="Arbeite mit klaren Wiederholungsblaecken.",
+        mode="grounded_answer",
     )
 
     response = client.post(
@@ -46,7 +48,13 @@ def test_chat_endpoint_returns_answer_and_citations(mock_retrieve_segments, mock
 
     assert response.status_code == 200
     assert response.data["answer"] == "Arbeite mit klaren Wiederholungsblaecken."
+    assert response.data["response_mode"] == "grounded_answer"
+    assert response.data["source_semantics"] == "related_sources"
     assert response.data["cited_segments"][0]["segment_id"] == 11
+    assert (
+        response.data["cited_segments"][0]["snippet"]
+        == "Fokus entsteht durch klare Wiederholung."
+    )
     mock_retrieve_segments.assert_called_once_with(
         "Wie lerne ich fokussierter?", owner=owner, limit=5
     )
@@ -97,8 +105,9 @@ def test_chat_endpoint_returns_empty_citations_when_no_hits(
     client.force_authenticate(user=owner)
 
     mock_retrieve_segments.return_value = []
-    mock_get_chat_provider.return_value.generate_answer.return_value = (
-        "Ich habe aktuell keine passenden Stellen in deiner Wissensbasis gefunden."
+    mock_get_chat_provider.return_value.generate_answer.return_value = CoachAnswer(
+        answer="Ich habe aktuell keine passenden Stellen in deiner Wissensbasis gefunden.",
+        mode="sources_only",
     )
 
     response = client.post(
@@ -108,5 +117,31 @@ def test_chat_endpoint_returns_empty_citations_when_no_hits(
     )
 
     assert response.status_code == 200
+    assert response.data["response_mode"] == "sources_only"
+    assert response.data["source_semantics"] == "related_sources"
     assert response.data["cited_segments"] == []
     assert "keine passenden" in response.data["answer"]
+
+
+def test_stub_chat_provider_uses_sources_only_mode_for_sensitive_question():
+    from apps.coach.chat_providers import StubChatProvider
+
+    provider = StubChatProvider()
+    response = provider.generate_answer(
+        question="Wie werde ich meine Aengste los?",
+        history=[],
+        segments=[
+            ScoredSegment(
+                segment_id=1,
+                transcript_id=2,
+                media_item_id=3,
+                content="Aengste brauchen Zeit und Orientierung.",
+                snippet="Aengste brauchen Zeit und Orientierung.",
+                score=0.8,
+                start_seconds=Decimal("10.000"),
+            )
+        ],
+    )
+
+    assert response.mode == "sources_only"
+    assert "keine therapeutische Antwort" in response.answer

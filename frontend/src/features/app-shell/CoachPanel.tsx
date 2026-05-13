@@ -7,6 +7,8 @@ import type { CoachCitedSegment, CoachHistoryEntry } from "./types";
 type CoachMessage = {
   role: "user" | "assistant";
   content: string;
+  responseMode?: "grounded_answer" | "sources_only";
+  sourceSemantics?: "related_sources";
   citedSegments?: CoachCitedSegment[];
 };
 
@@ -58,6 +60,8 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
         {
           role: "assistant",
           content: response.answer,
+          responseMode: response.response_mode,
+          sourceSemantics: response.source_semantics,
           citedSegments: response.cited_segments,
         },
       ]);
@@ -78,13 +82,13 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
       <div className="coach-header">
         <div>
           <p className="eyebrow">Coach</p>
-          <h2>Frage deine Wissensbasis</h2>
+          <h2>Frage auf Basis deiner Quellen</h2>
         </div>
         {isLoading ? <span className="coach-status">Antwort wird vorbereitet…</span> : null}
       </div>
       <p className="muted coach-intro">
-        Stelle eine konkrete Frage. Der Coach antwortet mit einer kompakten Einschaetzung und
-        zeigt dir die zugrunde liegenden Quellenkarten.
+        Stelle eine konkrete Frage. Der Coach gibt dir eine vorsichtige, quellenbasierte
+        Orientierung oder zeigt dir passende Quellen aus deiner Sammlung.
       </p>
 
       <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
@@ -118,6 +122,12 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
               <p className="coach-role">{message.role === "user" ? "Du" : "Coach"}</p>
               {message.role === "assistant" ? (
                 <div className="coach-markdown">
+                  {message.responseMode === "sources_only" ? (
+                    <p className="coach-mode-note">
+                      Begrenzter Modus: aktuell werden passende Quellen gezeigt statt einer voll
+                      ausformulierten Coach-Antwort.
+                    </p>
+                  ) : null}
                   <ReactMarkdown>{message.content}</ReactMarkdown>
                 </div>
               ) : (
@@ -125,8 +135,13 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
               )}
               {message.role === "assistant" && message.citedSegments ? (
                 <div className="coach-citations">
+                  <p className="coach-citations-label">
+                    {message.sourceSemantics === "related_sources"
+                      ? "Passende Quellen"
+                      : "Quellen"}
+                  </p>
                   {message.citedSegments.length === 0 ? (
-                    <p className="muted">Keine Quellenkarten verfuegbar.</p>
+                    <p className="muted">Keine passenden Quellen verfuegbar.</p>
                   ) : (
                     message.citedSegments.map((segment) => {
                       const mediaTitle =
@@ -140,7 +155,7 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
                             <strong>{mediaTitle}</strong>
                             {timestamp ? <span>{timestamp}</span> : null}
                           </div>
-                          <p>{segment.content}</p>
+                          <p>{segment.snippet}</p>
                         </div>
                       );
                     })

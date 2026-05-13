@@ -2,12 +2,16 @@ from typing import Any, cast
 
 from openai import OpenAI
 
-from .ports import ChatProvider, ScoredSegment
+from .ports import ChatProvider, CoachAnswer, ScoredSegment
 
 _SYSTEM_PROMPT = (
-    "Du bist ein empathischer, direkter, transformativer Coach. "
-    "Antworte in der Sprache der Frage. Nutze nur den bereitgestellten Kontext. "
-    "Wenn kein Kontext vorhanden ist, sage das offen und erfinde keine Quellen."
+    "Du bist ein vorsichtiger, quellenbasierter Coach fuer die persoenliche Wissenssammlung des "
+    "Nutzers. Antworte in der Sprache der Frage. Nutze nur den bereitgestellten Kontext. "
+    "Du bist keine therapeutische oder medizinische Autoritaet. "
+    "Bei sensiblen Fragen zu Angst, Krise, Selbstwert oder Leiden gib keine Heilungs-, Sofort- "
+    "oder Gewissheitsversprechen. Formuliere Grenzen offen und bleibe bei vorsichtiger "
+    "Orientierung. "
+    "Wenn der Kontext schwach oder leer ist, sage das klar und erfinde keine Quellen."
 )
 
 
@@ -21,8 +25,27 @@ def _build_context(segments: list[ScoredSegment]) -> str:
             f"[segment:{segment.segment_id} media:{segment.media_item_id} "
             f"start:{segment.start_seconds}]"
         )
-        lines.append(f"{header} {segment.content}")
+        lines.append(f"{header} {segment.snippet}")
     return "\n".join(lines)
+
+
+def _is_sensitive_question(question: str) -> bool:
+    lowered = question.lower()
+    return any(
+        term in lowered
+        for term in (
+            "angst",
+            "aengst",
+            "panik",
+            "depress",
+            "wertlos",
+            "ueberfordert",
+            "überfordert",
+            "krise",
+            "suizid",
+            "selbsthass",
+        )
+    )
 
 
 class OpenAICompatibleChatProvider:
@@ -32,15 +55,22 @@ class OpenAICompatibleChatProvider:
 
     def generate_answer(
         self, question: str, history: list[dict[str, str]], segments: list[ScoredSegment]
-    ) -> str:
+    ) -> CoachAnswer:
         messages: list[dict[str, str]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
         messages.extend(history)
+        sensitivity_note = (
+            "\n\nZusatzregel fuer diese Frage: Formuliere besonders vorsichtig, "
+            "nicht-therapeutisch und ohne Sofortloesungsversprechen."
+            if _is_sensitive_question(question)
+            else ""
+        )
         messages.append(
             {
                 "role": "user",
                 "content": (
                     f"Frage:\n{question}\n\n"
                     f"Kontext aus der Wissensbasis:\n{_build_context(segments)}"
+                    f"{sensitivity_note}"
                 ),
             }
         )
@@ -50,16 +80,45 @@ class OpenAICompatibleChatProvider:
             max_tokens=512,
             temperature=0.3,
         )
-        return (response.choices[0].message.content or "").strip()
+        return CoachAnswer(
+            answer=(response.choices[0].message.content or "").strip(),
+            mode="grounded_answer",
+        )
 
 
 class StubChatProvider:
     def generate_answer(
         self, question: str, history: list[dict[str, str]], segments: list[ScoredSegment]
-    ) -> str:
+    ) -> CoachAnswer:
         if not segments:
-            return "Ich habe aktuell keine passenden Stellen in deiner Wissensbasis gefunden."
-        return f"[Stub Coach] {question}"
+            if _is_sensitive_question(question):
+                return CoachAnswer(
+                    answer=(
+                        "Ich kann dir dazu keine therapeutische Antwort geben und habe in deiner "
+                        "Sammlung gerade keine passenden Quellen gefunden."
+                    ),
+                    mode="sources_only",
+                )
+            return CoachAnswer(
+                answer="Ich habe aktuell keine passenden Stellen in deiner Wissensbasis gefunden.",
+                mode="sources_only",
+            )
+        if _is_sensitive_question(question):
+            return CoachAnswer(
+                answer=(
+                    "Ich kann dir dazu keine therapeutische Antwort geben. "
+                    "Ich zeige dir aber passende Quellen aus deiner Sammlung, die dir Orientierung "
+                    "geben koennen."
+                ),
+                mode="sources_only",
+            )
+        return CoachAnswer(
+            answer=(
+                "Ich bin gerade im quellenbasierten Modus und zeige dir passende Stellen aus "
+                "deiner Sammlung statt einer ausformulierten Coach-Antwort."
+            ),
+            mode="sources_only",
+        )
 
 
 def get_chat_provider() -> ChatProvider:

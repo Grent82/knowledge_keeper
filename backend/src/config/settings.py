@@ -7,28 +7,34 @@ def env_list(name: str, default: str) -> list[str]:
     value = os.getenv(name, default)
     return [item.strip() for item in value.split(",") if item.strip()]
 
+
+def merge_env_list(name: str, defaults: list[str]) -> list[str]:
+    merged: list[str] = []
+    for item in [*defaults, *env_list(name, "")]:
+        if item and item not in merged:
+            merged.append(item)
+    return merged
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-only-for-dev")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
-CSRF_TRUSTED_ORIGINS = env_list(
+CSRF_TRUSTED_ORIGINS = merge_env_list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
-    ",".join(
-        [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "http://localhost:3002",
-            "http://localhost:3003",
-            "http://127.0.0.1:3000",
-            "http://127.0.0.1:3001",
-            "http://127.0.0.1:3002",
-            "http://127.0.0.1:3003",
-            "http://[::1]:3000",
-            "http://[::1]:3001",
-            "http://[::1]:3002",
-            "http://[::1]:3003",
-        ]
-    ),
+    [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
+        "http://[::1]:3000",
+        "http://[::1]:3001",
+        "http://[::1]:3002",
+        "http://[::1]:3003",
+    ],
 )
 
 INSTALLED_APPS = [
