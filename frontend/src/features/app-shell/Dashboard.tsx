@@ -4,6 +4,7 @@ import { deleteKnowledgeNote, fetchKnowledgeNotes } from "./api";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
+import { CoachPanel } from "./CoachPanel";
 import { ExternalSourceForm } from "./ExternalSourceForm";
 import { KnowledgeNoteEditor } from "./KnowledgeNoteEditor";
 import { KnowledgeNoteList } from "./KnowledgeNoteList";
@@ -184,7 +185,7 @@ export function Dashboard({
   const [showNoteEditor, setShowNoteEditor] = useState(false);
   const selectedProgressEntry =
     playbackEntries.find((entry) => entry.media_item === selectedMediaItem?.id) ?? null;
-  const mediaTitleById = new Map(ownerMediaItems.map((item) => [item.id, item.title]));
+  const mediaTitleById = new Map(mediaItems.map((item) => [item.id, item.title]));
   const progressFor = (item: MediaItem) =>
     playbackEntries.find((entry) => entry.media_item === item.id) ?? null;
   const filteredItems = [...mediaItems]
@@ -276,6 +277,8 @@ export function Dashboard({
         onSelectCategory={onSelectCategory}
         selectedCategoryId={selectedCategoryId}
       />
+
+      <CoachPanel mediaTitleById={mediaTitleById} />
 
       <section className="grid">
         <CategoryTree

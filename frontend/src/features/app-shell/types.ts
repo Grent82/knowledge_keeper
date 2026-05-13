@@ -132,3 +132,20 @@ export type SearchSuggestions = {
   tags: Tag[];
   media_items: MediaItem[];
 };
+
+export type CoachHistoryEntry = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type CoachCitedSegment = {
+  segment_id: number;
+  media_item_id: number;
+  content: string;
+  start_seconds: string | null;
+};
+
+export type CoachChatResponse = {
+  answer: string;
+  cited_segments: CoachCitedSegment[];
+};

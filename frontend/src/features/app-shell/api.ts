@@ -1,6 +1,8 @@
 import type {
   CategoryVisibilityAssignment,
   Category,
+  CoachChatResponse,
+  CoachHistoryEntry,
   ExternalSource,
   KnowledgeNote,
   MediaItem,
@@ -94,6 +96,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function fetchSession() {
   return request<SessionState>("/api/auth/session");
+}
+
+export function postCoachQuestion(question: string, history: CoachHistoryEntry[]) {
+  return request<CoachChatResponse>("/api/coach/chat/", {
+    method: "POST",
+    body: JSON.stringify({ question, history }),
+  });
 }
 
 export function fetchRestrictedUsers() {
