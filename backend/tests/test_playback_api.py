@@ -225,3 +225,48 @@ def test_trigger_transcription_403_for_non_owner():
     response = client.post(f"/api/playback/trigger/{media_item.id}/")
 
     assert response.status_code in {403, 404}
+
+
+@patch("apps.playback.views.summarize_transcript.delay")
+def test_trigger_summary_requeues_empty_ready_summary(mock_delay):
+    owner = User.objects.create_user(
+        username="owner-empty-ready-summary",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Summary Drift Item",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    transcript = Transcript.objects.create(
+        media_item=media_item,
+        status=ArtifactStatus.READY,
+        provider="local",
+        content="Some transcript text",
+    )
+    Summary.objects.create(
+        media_item=media_item,
+        transcript=transcript,
+        status=ArtifactStatus.READY,
+        kind="detailed",
+        provider="local",
+        content="",
+        markdown_content="",
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(
+        f"/api/playback/trigger/{media_item.id}/summary/",
+        {"kind": "detailed"},
+        format="json",
+    )
+
+    assert response.status_code == 202
+    assert response.data == {
+        "status": "queued",
+        "media_item_id": media_item.id,
+        "kind": "detailed",
+    }
+    mock_delay.assert_called_once_with(transcript.id, kind="detailed")

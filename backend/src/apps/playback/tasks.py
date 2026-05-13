@@ -25,6 +25,10 @@ def _extract_youtube_id(url: str) -> str | None:
     return None
 
 
+def _has_usable_summary_content(summary: Summary) -> bool:
+    return summary.has_usable_content()
+
+
 def _try_youtube_captions(source_url: str):
     """Fetch YouTube captions via youtube-transcript-api v1.x."""
     from youtube_transcript_api import YouTubeTranscriptApi
@@ -255,8 +259,8 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
         transcript=transcript,
         kind=kind,
         status=ArtifactStatus.READY,
-    ).first()
-    if existing:
+    ).order_by("-created_at")
+    if any(_has_usable_summary_content(summary) for summary in existing):
         return
 
     summary, _ = Summary.objects.get_or_create(
@@ -274,12 +278,22 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
 
     try:
         content = get_summary_provider().summarize(transcript.content, kind=kind)
+        if not content.strip():
+            raise ValueError(f"Summary provider returned empty content for kind '{kind}'.")
         summary.content = content
+        summary.markdown_content = ""
         summary.status = ArtifactStatus.READY
         summary.generated_at = timezone.now()
         summary.error_message = ""
         summary.save(
-            update_fields=["content", "status", "generated_at", "error_message", "updated_at"]
+            update_fields=[
+                "content",
+                "markdown_content",
+                "status",
+                "generated_at",
+                "error_message",
+                "updated_at",
+            ]
         )
         if kind == SummaryKind.SHORT:
             from apps.media_library.tasks import auto_tag_media_item

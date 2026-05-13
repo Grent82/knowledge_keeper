@@ -154,10 +154,14 @@ class TriggerSummaryView(APIView):
             transcript=transcript,
             kind=kind,
             status=ArtifactStatus.READY,
-        ).first()
-        if existing:
+        ).order_by("-created_at")
+        complete_summary = next(
+            (summary for summary in existing if summary.has_usable_content()),
+            None,
+        )
+        if complete_summary:
             return Response(
-                {"status": "ready", "summary_id": existing.id, "kind": kind},
+                {"status": "ready", "summary_id": complete_summary.id, "kind": kind},
                 status=http_status.HTTP_200_OK,
             )
 

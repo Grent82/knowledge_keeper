@@ -163,3 +163,6 @@ class Summary(TimestampedModel):
 
     def __str__(self) -> str:
         return f"Summary:{self.media_item_id}:{self.kind}"
+
+    def has_usable_content(self) -> bool:
+        return bool(self.markdown_content.strip() or self.content.strip())
