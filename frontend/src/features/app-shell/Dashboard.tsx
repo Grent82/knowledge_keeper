@@ -10,6 +10,7 @@ import { KnowledgeNoteEditor } from "./KnowledgeNoteEditor";
 import { KnowledgeNoteList } from "./KnowledgeNoteList";
 import { MediaPlayerCard } from "./MediaPlayerCard";
 import { MediaClassificationCard } from "./MediaClassificationCard";
+import { MediaLibraryPanel } from "./MediaLibraryPanel";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { RestrictedUserAccessCard } from "./RestrictedUserAccessCard";
 import { SearchPanel } from "./SearchPanel";
@@ -122,10 +123,6 @@ function formatPlaybackStatus(status: string): string {
     default:
       return "Not started";
   }
-}
-
-function resolveMediaTypeBadge(mediaType: string): string {
-  return mediaType === "video" ? "▶" : "♪";
 }
 
 export function Dashboard({
@@ -280,13 +277,7 @@ export function Dashboard({
 
       <CoachPanel mediaTitleById={mediaTitleById} />
 
-      <section className="grid">
-        <CategoryTree
-          categories={categories}
-          onSelectCategory={onSelectCategory}
-          selectedCategoryId={selectedCategoryId}
-        />
-
+      <section className="dashboard-search-row">
         <SearchPanel
           onChangeQuery={onChangeSearchQuery}
           onSelectCategory={(categoryId) => {
@@ -299,103 +290,45 @@ export function Dashboard({
           suggestions={searchSuggestions}
           tags={tags}
         />
+      </section>
 
-        <article className="card">
-          <h2>Media Library</h2>
-          <p className="muted">Current media items available in the selected context.</p>
-          <div className="library-filters">
-            <select
-              onChange={(event) => setFilterMediaType(event.target.value as "all" | "audio" | "video")}
-              value={filterMediaType}
-            >
-              <option value="all">All types</option>
-              <option value="audio">Audio</option>
-              <option value="video">Video</option>
-            </select>
-            <select
-              onChange={(event) =>
-                setFilterStatus(
-                  event.target.value as "all" | "not_started" | "in_progress" | "completed",
-                )
-              }
-              value={filterStatus}
-            >
-              <option value="all">All status</option>
-              <option value="not_started">Not started</option>
-              <option value="in_progress">In progress</option>
-              <option value="completed">Completed</option>
-            </select>
-            <select
-              onChange={(event) => setSortBy(event.target.value as "title" | "date" | "progress")}
-              value={sortBy}
-            >
-              <option value="title">Sort: Title</option>
-              <option value="date">Sort: Date</option>
-              <option value="progress">Sort: Progress</option>
-            </select>
-            <button
-              className="secondary-button sort-dir-button"
-              onClick={() => setSortDir((currentDir) => (currentDir === "asc" ? "desc" : "asc"))}
-              type="button"
-            >
-              {sortDir === "asc" ? "↑" : "↓"}
-            </button>
-          </div>
-          {filteredItems.length === 0 ? (
-            <p className="empty-state">No media items yet.</p>
-          ) : (
-            <ul className="simple-list">
-              {filteredItems.map((item) => {
-                const playbackEntry = progressFor(item);
-                const progressPercent = playbackEntry
-                  ? formatProgressPercent(playbackEntry.progress_percent)
-                  : 0;
+      <section className="dashboard-workspace">
+        <aside className="dashboard-sidebar">
+          <nav aria-label="Library navigation">
+          <CategoryTree
+            categories={categories}
+            onSelectCategory={onSelectCategory}
+            selectedCategoryId={selectedCategoryId}
+          />
+          </nav>
+        </aside>
+        <div className="dashboard-main">
+          <MediaLibraryPanel
+            filterMediaType={filterMediaType}
+            filterStatus={filterStatus}
+            filteredItems={filteredItems}
+            onChangeFilterMediaType={setFilterMediaType}
+            onChangeFilterStatus={setFilterStatus}
+            onChangeSortBy={setSortBy}
+            onSelectMediaItem={onSelectMediaItem}
+            onToggleSortDir={() => setSortDir((currentDir) => (currentDir === "asc" ? "desc" : "asc"))}
+            progressFor={progressFor}
+            selectedMediaItem={selectedMediaItem}
+            sortBy={sortBy}
+            sortDir={sortDir}
+          />
 
-                return (
-                  <li
-                    key={item.id}
-                    className={selectedMediaItem?.id === item.id ? "selected-item" : undefined}
-                  >
-                    <button
-                      className="list-button media-list-button"
-                      onClick={() => onSelectMediaItem(item)}
-                      type="button"
-                    >
-                      <div className="media-list-title-row">
-                        <span aria-hidden="true" className="media-type-badge">
-                          {resolveMediaTypeBadge(item.media_type)}
-                        </span>
-                        <strong>{item.title}</strong>
-                      </div>
-                      <span>
-                        {item.media_type} · {item.player_display_mode}
-                      </span>
-                      {playbackEntry ? (
-                        <div aria-hidden="true" className="progress-bar-track">
-                          <div
-                            className={`progress-bar-fill ${playbackEntry.status === "completed" ? "completed" : ""}`.trim()}
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </article>
-
-        <MediaPlayerCard
-          mediaItem={selectedMediaItem}
-          onDeleteMediaItem={session.role === "owner" ? onDeleteMediaItem : undefined}
-          onPersistProgress={onPersistProgress}
-          onUpdateMediaItem={session.role === "owner" ? onUpdateMediaItem : undefined}
-          progressEntry={selectedProgressEntry}
-        />
-        {session.role === "owner" && selectedMediaItem ? (
-          <TranscriptPanel mediaItem={selectedMediaItem} />
-        ) : null}
+          <MediaPlayerCard
+            mediaItem={selectedMediaItem}
+            onDeleteMediaItem={session.role === "owner" ? onDeleteMediaItem : undefined}
+            onPersistProgress={onPersistProgress}
+            onUpdateMediaItem={session.role === "owner" ? onUpdateMediaItem : undefined}
+            progressEntry={selectedProgressEntry}
+          />
+          {session.role === "owner" && selectedMediaItem ? (
+            <TranscriptPanel mediaItem={selectedMediaItem} />
+          ) : null}
+        </div>
       </section>
 
       <section className="grid">

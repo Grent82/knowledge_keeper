@@ -48,6 +48,7 @@ export function SearchPanel({
       <h2>Search</h2>
       <p className="muted">Start typing to get matching categories, tags and media items.</p>
       <input
+        aria-label="Search media library"
         className="search-input"
         onChange={(event) => onChangeQuery(event.target.value)}
         placeholder="Search categories, tags, media..."
