@@ -448,7 +448,7 @@ export function Dashboard({
               />
             ) : (
               <article className="card knowledge-note-editor">
-                <h2>Notizeditor</h2>
+                <h2>Notizbereich</h2>
                 <p className="muted">
                   {knowledgeNotesLoading
                     ? "Wissensnotizen werden geladen…"

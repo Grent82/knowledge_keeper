@@ -83,19 +83,19 @@ class StubNoteProvider:
         return [
             NoteResult(
                 kind="insight",
-                title="[Stub] Schlüsselerkenntnis aus dem Inhalt",
+                title="Schlüsselerkenntnis aus dem Inhalt",
                 content_markdown="Dies ist eine automatisch generierte Platzhalter-Notiz. "
                 "Sie wird durch echte KI-Inhalte ersetzt, sobald ein Provider konfiguriert ist.",
             ),
             NoteResult(
                 kind="action",
-                title="[Stub] Konkrete Handlungsempfehlung",
+                title="Konkrete Handlungsempfehlung",
                 content_markdown="Konfiguriere `KNOWLEDGE_NOTE_PROVIDER=openai_compatible` "
                 "in den Django-Settings, um echte Notizen zu erzeugen.",
             ),
             NoteResult(
                 kind="reflection",
-                title="[Stub] Reflexionsfrage",
+                title="Reflexionsfrage",
                 content_markdown="Was wäre die wichtigste Erkenntnis aus diesem Inhalt für dich?",
             ),
         ]

@@ -1,4 +1,5 @@
 import type { KnowledgeNote } from "./types";
+import { formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
 
 type KnowledgeNoteListProps = {
   notes: KnowledgeNote[];
@@ -29,7 +30,7 @@ export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteLi
           {notes.map((note) => (
             <li key={note.id}>
               <button className="list-button media-list-button" onClick={() => onSelect(note)} type="button">
-                <strong>{note.title}</strong>
+                <strong>{formatKnowledgeNoteTitle(note.title)}</strong>
                 <span className="muted">Aktualisiert: {formatUpdatedAt(note.updated_at)}</span>
               </button>
             </li>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { createKnowledgeNote, updateKnowledgeNote } from "./api";
+import { formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
 import type { KnowledgeNote } from "./types";
 
 type KnowledgeNoteEditorProps = {
@@ -23,7 +24,7 @@ export function KnowledgeNoteEditor({
   onSave,
   onClose,
 }: KnowledgeNoteEditorProps) {
-  const [title, setTitle] = useState(note?.title ?? "");
+  const [title, setTitle] = useState(note ? formatKnowledgeNoteTitle(note.title) : "");
   const [contentMarkdown, setContentMarkdown] = useState(note?.content_markdown ?? "");
   const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -32,13 +33,13 @@ export function KnowledgeNoteEditor({
     () =>
       (note?.linked_notes ?? []).map((linkedNoteId) => {
         const linkedNote = allNotes.find((candidate) => candidate.id === linkedNoteId);
-        return linkedNote?.title ?? `Notiz #${linkedNoteId}`;
+        return linkedNote ? formatKnowledgeNoteTitle(linkedNote.title) : `Notiz #${linkedNoteId}`;
       }),
     [allNotes, note?.linked_notes],
   );
 
   useEffect(() => {
-    setTitle(note?.title ?? "");
+    setTitle(note ? formatKnowledgeNoteTitle(note.title) : "");
     setContentMarkdown(note?.content_markdown ?? "");
     setPreviewMode(false);
     setError("");
