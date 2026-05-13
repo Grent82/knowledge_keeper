@@ -80,23 +80,48 @@ class StubNoteProvider:
     """Returns deterministic stub notes for local development without an AI backend."""
 
     def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
+        condensed_text = " ".join(transcript_text.split())
+        sentences = [
+            sentence.strip(" .")
+            for sentence in condensed_text.replace("?", ".").replace("!", ".").split(".")
+            if sentence.strip()
+        ]
+        first = (
+            sentences[0]
+            if sentences
+            else "Der Inhalt enthaelt mehrere anschlussfaehige Gedanken."
+        )
+        second = (
+            sentences[1]
+            if len(sentences) > 1
+            else "Ein naechster Schritt koennte sein, die zentrale Aussage bewusst zu notieren."
+        )
+
         return [
             NoteResult(
                 kind="insight",
                 title="Schlüsselerkenntnis aus dem Inhalt",
-                content_markdown="Dies ist eine automatisch generierte Platzhalter-Notiz. "
-                "Sie wird durch echte KI-Inhalte ersetzt, sobald ein Provider konfiguriert ist.",
+                content_markdown=(
+                    f"Eine zentrale Aussage aus dem Inhalt ist: **{first}**.\n\n"
+                    "Diese Demo-Notiz zeigt, wie eine verdichtete Erkenntnis aussehen kann."
+                ),
             ),
             NoteResult(
                 kind="action",
                 title="Konkrete Handlungsempfehlung",
-                content_markdown="Konfiguriere `KNOWLEDGE_NOTE_PROVIDER=openai_compatible` "
-                "in den Django-Settings, um echte Notizen zu erzeugen.",
+                content_markdown=(
+                    f"Leite aus dem Gehoerten einen kleinen naechsten Schritt ab, zum Beispiel: "
+                    f"**{second}**.\n\n"
+                    "Halte fest, was du davon als konkrete Handlung pruefen willst."
+                ),
             ),
             NoteResult(
                 kind="reflection",
                 title="Reflexionsfrage",
-                content_markdown="Was wäre die wichtigste Erkenntnis aus diesem Inhalt für dich?",
+                content_markdown=(
+                    f"Welche Aussage aus dem Inhalt trifft dich am meisten: **{first}**?\n\n"
+                    "Und was bedeutet sie fuer dein aktuelles Handeln oder Denken?"
+                ),
             ),
         ]
 

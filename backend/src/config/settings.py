@@ -150,6 +150,7 @@ WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
 WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(BASE_DIR.parent / "var" / "whisper_models"))
 
 # AI / Summary provider
+KNOWLEDGE_NOTE_PROVIDER = os.getenv("KNOWLEDGE_NOTE_PROVIDER", "stub")
 SUMMARY_PROVIDER = os.getenv("SUMMARY_PROVIDER", "stub")
 AI_HUB_BASE_URL = os.getenv("AI_HUB_BASE_URL", "")
 AI_HUB_API_KEY = os.getenv("AI_HUB_API_KEY", "")

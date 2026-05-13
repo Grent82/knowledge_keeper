@@ -10,6 +10,10 @@ def test_csrf_trusted_origins_include_ipv6_localhost() -> None:
     assert "http://[::1]:3000" in settings.CSRF_TRUSTED_ORIGINS
 
 
+def test_knowledge_note_provider_setting_exists() -> None:
+    assert settings.KNOWLEDGE_NOTE_PROVIDER in {"stub", "openai_compatible"}
+
+
 def test_csrf_trusted_origins_keep_loopback_entries_when_env_override_is_narrow(
     monkeypatch,
 ) -> None:
