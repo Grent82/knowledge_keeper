@@ -1,10 +1,17 @@
 from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 
 from apps.accounts.models import User, UserRole
 from apps.media_library.models import ExternalSource, MediaAsset, MediaItem, MediaType
-from apps.playback.models import ArtifactStatus, Summary, Transcript, TranscriptSegment
+from apps.playback.models import (
+    ArtifactStatus,
+    Summary,
+    Transcript,
+    TranscriptProvider,
+    TranscriptSegment,
+)
 from apps.playback.ports import SegmentResult, TranscriptionResult
 from apps.playback.tasks import summarize_transcript, transcribe_media_item
 
@@ -250,6 +257,7 @@ def test_transcribe_media_item_failed_on_provider_error(mock_get_provider, mock_
 
 
 @patch("apps.playback.tasks.get_summary_provider")
+@override_settings(SUMMARY_PROVIDER="openai_compatible")
 def test_summarize_transcript_creates_summary(mock_get_provider):
     mock_get_provider.return_value.summarize.return_value = "Short summary"
     owner = User.objects.create_user(username="owner-summary-task", role=UserRole.OWNER)
@@ -269,6 +277,7 @@ def test_summarize_transcript_creates_summary(mock_get_provider):
     summary = Summary.objects.get(media_item=media_item, transcript=transcript)
     assert summary.status == ArtifactStatus.READY
     assert summary.content == "Short summary"
+    assert summary.provider == TranscriptProvider.OPENAI
     assert summary.generated_at is not None
     mock_get_provider.return_value.summarize.assert_called_once_with(
         "Long transcript body",
@@ -292,3 +301,31 @@ def test_summarize_transcript_skips_if_not_ready():
     summarize_transcript.run(transcript.id)
 
     assert not Summary.objects.filter(media_item=media_item, transcript=transcript).exists()
+
+
+@patch("apps.playback.tasks.summarize_transcript.retry")
+@patch("apps.playback.tasks.get_summary_provider")
+@override_settings(SUMMARY_PROVIDER="openai_compatible")
+def test_summarize_transcript_marks_empty_output_failed_without_retry(
+    mock_get_provider, mock_retry
+):
+    mock_get_provider.return_value.summarize.return_value = "   "
+    owner = User.objects.create_user(username="owner-summary-empty", role=UserRole.OWNER)
+    media_item = MediaItem.objects.create(
+        title="Empty Summary Source",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    transcript = Transcript.objects.create(
+        media_item=media_item,
+        status=ArtifactStatus.READY,
+        content="Transcript body",
+    )
+
+    summarize_transcript.run(transcript.id, kind="detailed")
+
+    summary = Summary.objects.get(media_item=media_item, transcript=transcript, kind="detailed")
+    assert summary.status == ArtifactStatus.FAILED
+    assert summary.provider == TranscriptProvider.OPENAI
+    assert summary.error_message == "Summary provider returned empty content for kind 'detailed'."
+    mock_retry.assert_not_called()

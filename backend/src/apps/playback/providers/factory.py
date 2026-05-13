@@ -31,3 +31,13 @@ def get_summary_provider() -> SummaryProvider:
     from .stub import StubSummaryProvider
 
     return StubSummaryProvider()
+
+
+def get_summary_provider_label() -> str:
+    provider = getattr(settings, "SUMMARY_PROVIDER", "stub")
+
+    if provider == "openai_compatible":
+        return "openai"
+    if provider == "stub":
+        return "local"
+    return "other"

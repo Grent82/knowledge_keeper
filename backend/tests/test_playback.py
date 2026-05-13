@@ -145,8 +145,7 @@ def test_summarize_transcript_marks_empty_provider_output_as_failed(mock_get_sum
     )
     mock_get_summary_provider.return_value.summarize.return_value = "   "
 
-    with pytest.raises(ValueError, match="empty content"):
-        summarize_transcript(transcript.id, kind=SummaryKind.DETAILED)
+    summarize_transcript(transcript.id, kind=SummaryKind.DETAILED)
 
     summary = Summary.objects.get(
         media_item=item,

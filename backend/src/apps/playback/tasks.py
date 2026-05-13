@@ -8,7 +8,11 @@ from django.utils import timezone
 
 from .models import ArtifactStatus, Summary, SummaryKind, Transcript, TranscriptSegment
 from .ports import SegmentResult, TranscriptionResult
-from .providers.factory import get_summary_provider, get_transcription_provider
+from .providers.factory import (
+    get_summary_provider,
+    get_summary_provider_label,
+    get_transcription_provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -267,14 +271,18 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
         media_item=media_item,
         transcript=transcript,
         kind=kind,
-        defaults={"status": ArtifactStatus.PENDING},
+        defaults={
+            "status": ArtifactStatus.PENDING,
+            "provider": get_summary_provider_label(),
+        },
     )
 
     if summary.status == ArtifactStatus.PROCESSING:
         return
 
+    summary.provider = get_summary_provider_label()
     summary.status = ArtifactStatus.PROCESSING
-    summary.save(update_fields=["status", "updated_at"])
+    summary.save(update_fields=["provider", "status", "updated_at"])
 
     try:
         content = get_summary_provider().summarize(transcript.content, kind=kind)
@@ -299,6 +307,10 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
             from apps.media_library.tasks import auto_tag_media_item
 
             auto_tag_media_item.delay(media_item.id)
+    except ValueError as exc:
+        summary.status = ArtifactStatus.FAILED
+        summary.error_message = str(exc)
+        summary.save(update_fields=["status", "error_message", "updated_at"])
     except Exception as exc:
         summary.status = ArtifactStatus.FAILED
         summary.error_message = str(exc)
