@@ -6,7 +6,7 @@ import tempfile
 from celery import shared_task
 from django.utils import timezone
 
-from .models import ArtifactStatus, Summary, Transcript, TranscriptSegment
+from .models import ArtifactStatus, Summary, SummaryKind, Transcript, TranscriptSegment
 from .ports import SegmentResult, TranscriptionResult
 from .providers.factory import get_summary_provider, get_transcription_provider
 
@@ -281,6 +281,10 @@ def summarize_transcript(self, transcript_id: int, kind: str = "short") -> None:
         summary.save(
             update_fields=["content", "status", "generated_at", "error_message", "updated_at"]
         )
+        if kind == SummaryKind.SHORT:
+            from apps.media_library.tasks import auto_tag_media_item
+
+            auto_tag_media_item.delay(media_item.id)
     except Exception as exc:
         summary.status = ArtifactStatus.FAILED
         summary.error_message = str(exc)
