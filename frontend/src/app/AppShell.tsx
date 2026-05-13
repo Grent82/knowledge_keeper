@@ -5,5 +5,5 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
-  return <main className="app-shell">{children}</main>;
+  return <main className="app-shell app-shell-wide">{children}</main>;
 }
