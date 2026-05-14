@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole
@@ -269,4 +270,50 @@ def test_trigger_summary_requeues_empty_ready_summary(mock_delay):
         "media_item_id": media_item.id,
         "kind": "detailed",
     }
+    mock_delay.assert_called_once_with(transcript.id, kind="detailed")
+
+
+@patch("apps.playback.views.summarize_transcript.delay")
+@override_settings(SUMMARY_PROVIDER="openai_compatible")
+def test_trigger_summary_resets_failed_artifact_state_before_queue(mock_delay):
+    owner = User.objects.create_user(
+        username="owner-failed-summary-reset",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Failed Summary Item",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    transcript = Transcript.objects.create(
+        media_item=media_item,
+        status=ArtifactStatus.READY,
+        provider="local",
+        content="Some transcript text",
+    )
+    summary = Summary.objects.create(
+        media_item=media_item,
+        transcript=transcript,
+        status=ArtifactStatus.FAILED,
+        kind="detailed",
+        provider="local",
+        content="",
+        markdown_content="",
+        error_message="old failure",
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(
+        f"/api/playback/trigger/{media_item.id}/summary/",
+        {"kind": "detailed"},
+        format="json",
+    )
+
+    summary.refresh_from_db()
+    assert response.status_code == 202
+    assert summary.status == ArtifactStatus.PENDING
+    assert summary.provider == "openai"
+    assert summary.error_message == ""
     mock_delay.assert_called_once_with(transcript.id, kind="detailed")

@@ -17,6 +17,7 @@ from .models import (
     Transcript,
     TranscriptSegment,
 )
+from .providers.factory import get_summary_provider_label
 from .serializers import (
     PlaybackProgressSerializer,
     SummarySerializer,
@@ -176,6 +177,22 @@ class TriggerSummaryView(APIView):
                 {"detail": f"Summary of kind '{kind}' is already being generated."},
                 status=http_status.HTTP_409_CONFLICT,
             )
+
+        failed = (
+            Summary.objects.filter(
+                media_item=media_item,
+                transcript=transcript,
+                kind=kind,
+                status=ArtifactStatus.FAILED,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+        if failed:
+            failed.status = ArtifactStatus.PENDING
+            failed.provider = get_summary_provider_label()
+            failed.error_message = ""
+            failed.save(update_fields=["status", "provider", "error_message", "updated_at"])
 
         summarize_transcript.delay(transcript.id, kind=kind)
         return Response(
