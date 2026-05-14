@@ -58,9 +58,14 @@ class OpenAICompatibleSummaryProvider:
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": f"{instruction}\n\nTranscript:\n{transcript_text}",
+                    "content": (
+                        f"{instruction}\n"
+                        "Write in the same language as the transcript.\n\n"
+                        f"Transcript:\n{transcript_text}"
+                    ),
                 },
             ],
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             max_tokens=1024,
             temperature=0.3,
         )

@@ -31,20 +31,26 @@ def test_openai_compatible_summary_provider_returns_message_content():
         api_key="test-key",
         model="test-model",
     )
+    captured_kwargs = {}
+
+    def fake_create(**kwargs):
+        captured_kwargs.update(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content="Detailed summary body",
+                        model_extra={},
+                    ),
+                    model_extra={},
+                )
+            ]
+        )
+
     provider.client = SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(
-                create=lambda **_: SimpleNamespace(
-                    choices=[
-                        SimpleNamespace(
-                            message=SimpleNamespace(
-                                content="Detailed summary body",
-                                model_extra={},
-                            ),
-                            model_extra={},
-                        )
-                    ]
-                )
+                create=fake_create
             )
         )
     )
@@ -52,6 +58,12 @@ def test_openai_compatible_summary_provider_returns_message_content():
     result = provider.summarize("Transcript text for testing.", kind="detailed")
 
     assert result == "Detailed summary body"
+    assert captured_kwargs["extra_body"] == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
+    assert "Write in the same language as the transcript." in captured_kwargs["messages"][1][
+        "content"
+    ]
 
 
 def test_openai_compatible_summary_provider_falls_back_to_choice_text():
