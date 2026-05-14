@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "apps.common.middleware.PendingMigrationsBlockerMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -157,3 +158,6 @@ AI_HUB_API_KEY = os.getenv("AI_HUB_API_KEY", "")
 AI_HUB_MODEL = os.getenv("AI_HUB_MODEL", "qwen-3.5-122b-sovereign")
 RETRIEVAL_PROVIDER = os.getenv("RETRIEVAL_PROVIDER", "stub")
 CHAT_PROVIDER = os.getenv("CHAT_PROVIDER", "stub")
+DEV_BLOCK_ON_PENDING_MIGRATIONS = (
+    os.getenv("DEV_BLOCK_ON_PENDING_MIGRATIONS", "true" if DEBUG else "false").lower() == "true"
+)
