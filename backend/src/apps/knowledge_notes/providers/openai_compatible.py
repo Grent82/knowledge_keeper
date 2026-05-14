@@ -9,12 +9,14 @@ from ..ports import KnowledgeNoteProvider, NoteResult
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You are a knowledge extraction assistant. "
-    "Given a transcript, you identify actionable knowledge artifacts. "
-    "Respond ONLY with a valid JSON array and no other text."
+    "Du bist ein Transformations-Extraktions-Assistent. "
+    "Du analysierst Transkripte und destillierst daraus persönliche Wachstums-Artefakte — "
+    "keine Inhaltsangaben, sondern Erkenntnis-Kristalle die das Leben des Lesers "
+    "konkret verändern können. "
+    "Antworte NUR mit einem gültigen JSON-Array ohne Erklärungen oder Markdown."
 )
 
-_MAX_NOTE_WORDS = 48
+_MAX_NOTE_WORDS = 80
 _GENERIC_REFLECTION_PREFIXES = (
     "welche aussage aus dem inhalt",
     "welcher aussage aus dem inhalt",
@@ -24,33 +26,66 @@ _GENERIC_ACTION_PHRASES = ("zum beispiel:",)
 _MAX_SECTION_WORDS = 32
 _MAX_SECTIONS = 6
 _MAX_SENTENCES_PER_SECTION = 2
+_ICH_FORM_PREFIXES = (
+    "ich ",
+    "mir ",
+    "mich ",
+    "mein ",
+    "meine ",
+    "meinem ",
+    "meiner ",
+    "i ",
+    "my ",
+    "me ",
+    "i'",
+)
 
-_USER_PROMPT_TEMPLATE = """Analyze the following transcript and generate 4-6 knowledge notes.
-
-For each note, produce a JSON object with these exact keys:
-- "kind": one of "insight", "action", "reflection", "question"
-- "title": short descriptive title (max 80 chars)
-- "summary_sentence": one short sentence that states the note's core point
-- "source_excerpt": a short excerpt or phrase from the transcript that grounds the note
-- "why_it_matters": one short sentence explaining why the note is worth keeping
-- "content_markdown": the note body in Markdown (max 2 short sentences or 2 bullets)
-
-Rules:
-- "insight": a key claim, mental model or lesson from the content; keep it concise
-- "action": a concrete next step the listener could do in under 30 minutes; start with a verb
-- "reflection": an open question that exposes a tension, tradeoff or blind spot from the content
-- "question": a clarifying question about the material itself
-- Do NOT copy the transcript verbatim. Synthesize and distill aggressively.
-- Do NOT include long quoted transcript passages.
-- Keep every note under 45 words.
-- Skip weak or generic notes instead of padding the result.
-- Write in the same language as the transcript.
-
-Return ONLY the JSON array, no preamble, no explanation.
-
-Transcript:
-{transcript}
-"""
+_USER_PROMPT_TEMPLATE = (
+    "Analysiere das folgende Transkript. "
+    "Identifiziere 3-6 Passagen mit echtem Transformations-Potenzial.\n\n"
+    "WICHTIG: Überspringe flache, generische oder rein beschreibende Aussagen. "
+    "Qualität vor Quantität.\n"
+    "Wenn weniger als 3 hochwertige Erkenntnisse vorhanden sind, gib weniger zurück.\n\n"
+    "Für jede Erkenntnis erzeuge ein JSON-Objekt mit exakt diesen Schlüsseln:\n\n"
+    "- \"kind\": eines von \"insight\" | \"action\" | \"reflection\" | "
+    "\"question\"\n"
+    "- \"title\": Aktiver Titel in Ich-Form, max 10 Wörter "
+    "(z.B. \"Ich erkenne, dass Konflikte Wachstum signalisieren\")\n"
+    "- \"problem\": Was ist die Spannung, das Leid oder der unbefriedigte Zustand "
+    "den dieser Inhalt adressiert? Max 2 Sätze.\n"
+    "- \"core_insight\": Die Kern-Erkenntnis in Ich-Form — NICHT \"der Referent "
+    "sagt X\" sondern \"Ich erkenne: X\". Max 2 Sätze.\n"
+    "- \"application\": In welcher konkreten Lebenssituation wende ich das an? "
+    "Woran merke ich sensorisch dass es wirkt? Max 2 Sätze.\n"
+    "- \"first_step\": Der kleinste mögliche erste Schritt — konkret, heute noch "
+    "umsetzbar, MUSS mit einem Verb beginnen. 1 Satz.\n"
+    "- \"deeper_principle\": Das übergeordnete Prinzip dahinter — auf welche "
+    "anderen Lebensbereiche anwendbar? 1 Satz.\n"
+    "- \"context_tags\": Array von passenden Tags aus dieser Liste (wähle 1-3): "
+    "[\"kontext:Entscheidung\", \"kontext:Konflikt\", "
+    "\"kontext:Antriebslosigkeit\", \"kontext:Beziehung\", "
+    "\"kontext:Arbeit\", \"kontext:Selbstbild\", "
+    "\"kontext:Kommunikation\", \"kontext:Gewohnheit\", "
+    "\"kontext:Führung\", \"kontext:Kreativität\", \"kontext:Verlust\", "
+    "\"kontext:Unsicherheit\"]\n"
+    "- \"summary_sentence\": Eine kurze Zusammenfassung der Kernaussage "
+    "(1 Satz, für Rückwärtskompatibilität)\n"
+    "- \"source_excerpt\": Kurzes Zitat oder paraphrasierter Anker aus dem "
+    "Transkript (max 20 Wörter)\n"
+    "- \"why_it_matters\": Ein Satz warum diese Erkenntnis erhaltenswert ist\n"
+    "- \"content_markdown\": Vertiefende Ausführung in Markdown "
+    "(max 3 Bullets oder 2 kurze Absätze)\n\n"
+    "Regeln:\n"
+    "- title MUSS in Ich-Form beginnen (\"Ich erkenne\", \"Ich verstehe\", "
+    "\"Mir wird klar\", etc.)\n"
+    "- first_step MUSS mit einem Verb im Imperativ beginnen "
+    "(z.B. \"Schreibe...\", \"Frage...\", \"Beobachte...\")\n"
+    "- problem MUSS ausgefüllt sein — keine Erkenntnis ohne Spannung\n"
+    "- Schreibe in der Sprache des Transkripts\n"
+    "- Gib NUR das JSON-Array zurück, keine Erklärungen, kein Markdown-Wrapper\n\n"
+    "Transkript:\n"
+    "{transcript}\n"
+)
 
 
 def _word_count(text: str) -> int:
@@ -79,18 +114,31 @@ def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
         summary_sentence = _normalize_whitespace(result.summary_sentence)
         source_excerpt = _normalize_whitespace(result.source_excerpt)
         why_it_matters = _normalize_whitespace(result.why_it_matters)
+        problem = _normalize_whitespace(result.problem)
+        core_insight = _normalize_whitespace(result.core_insight)
+        application = _normalize_whitespace(result.application)
+        first_step = _normalize_whitespace(result.first_step)
+        deeper_principle = _normalize_whitespace(result.deeper_principle)
+        context_tags = result.context_tags if isinstance(result.context_tags, list) else []
         if not content:
             continue
         if _word_count(content) > _MAX_NOTE_WORDS:
             continue
         if not summary_sentence or not source_excerpt or not why_it_matters:
             continue
+        title = result.title.strip()[:255]
+        title_lower = title.lower()
+        if not any(title_lower.startswith(prefix) for prefix in _ICH_FORM_PREFIXES):
+            continue
+        if not problem:
+            continue
+        if not first_step or len(first_step.split()) < 4:
+            continue
         if result.kind == "reflection" and _looks_like_generic_reflection(content):
             continue
         if result.kind == "action" and _looks_like_generic_action(content):
             continue
-        title = result.title.strip()[:255]
-        signature = (result.kind, title.lower(), content.lower())
+        signature = (result.kind, title_lower, content.lower())
         if signature in seen_signatures:
             continue
         seen_signatures.add(signature)
@@ -102,6 +150,12 @@ def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
                 summary_sentence=summary_sentence,
                 source_excerpt=source_excerpt,
                 why_it_matters=why_it_matters,
+                problem=problem,
+                core_insight=core_insight,
+                application=application,
+                first_step=first_step,
+                deeper_principle=deeper_principle,
+                context_tags=context_tags,
             )
         )
     return filtered
@@ -200,34 +254,42 @@ class OpenAICompatibleNoteProvider:
             max_tokens=2048,
             temperature=0.4,
         )
-        raw = (response.choices[0].message.content or "").strip()
+        raw_content = (response.choices[0].message.content or "").strip()
 
         try:
-            items = json.loads(raw)
+            items = json.loads(raw_content)
         except json.JSONDecodeError:
             logger.warning("Note provider returned non-JSON response; attempting extraction")
-            start = raw.find("[")
-            end = raw.rfind("]") + 1
+            start = raw_content.find("[")
+            end = raw_content.rfind("]") + 1
             if start == -1 or end == 0:
                 logger.error("Could not extract JSON array from note provider response")
                 return []
-            items = json.loads(raw[start:end])
+            items = json.loads(raw_content[start:end])
 
         results = []
-        for item in items:
-            if not isinstance(item, dict):
+        for raw in items:
+            if not isinstance(raw, dict):
                 continue
-            kind = item.get("kind", "general")
-            title = str(item.get("title", "Untitled"))[:255]
-            content = str(item.get("content_markdown", ""))
+            kind = raw.get("kind", "general")
+            title = str(raw.get("title", "Untitled"))[:255]
+            content = str(raw.get("content_markdown", ""))
             results.append(
                 NoteResult(
                     title=title,
                     content_markdown=content,
                     kind=kind,
-                    summary_sentence=str(item.get("summary_sentence", "")),
-                    source_excerpt=str(item.get("source_excerpt", "")),
-                    why_it_matters=str(item.get("why_it_matters", "")),
+                    summary_sentence=str(raw.get("summary_sentence", "")),
+                    source_excerpt=str(raw.get("source_excerpt", "")),
+                    why_it_matters=str(raw.get("why_it_matters", "")),
+                    problem=str(raw.get("problem", "")),
+                    core_insight=str(raw.get("core_insight", "")),
+                    application=str(raw.get("application", "")),
+                    first_step=str(raw.get("first_step", "")),
+                    deeper_principle=str(raw.get("deeper_principle", "")),
+                    context_tags=raw.get("context_tags", [])
+                    if isinstance(raw.get("context_tags"), list)
+                    else [],
                 )
             )
 
@@ -259,44 +321,94 @@ class StubNoteProvider:
         results = [
             NoteResult(
                 kind="insight",
-                title="Schlüsselerkenntnis aus dem Inhalt",
+                title="Ich erkenne mehr Spielraum",
                 summary_sentence=first,
                 source_excerpt=first,
                 why_it_matters="Sie macht die Kernidee des Inhalts schnell wieder auffindbar.",
+                problem="Ich bleibe in alten Mustern stecken und uebersehe neue Optionen.",
+                core_insight=(
+                    "Ich erkenne, dass schon ein anderer Blick auf die Situation "
+                    "neue Optionen oeffnet."
+                ),
+                application=(
+                    "Wenn ich im Alltag inneren Druck spuere, pruefe ich zuerst "
+                    "meinen Blick auf die Lage."
+                ),
+                first_step="Notiere heute eine festgefahrene Annahme aus deinem Alltag.",
+                deeper_principle=(
+                    "Mehr Freiheit entsteht, wenn ich Deutungen pruefe statt "
+                    "reflexhaft zu verteidigen."
+                ),
+                context_tags=["kontext:Selbstbild"],
                 content_markdown=(
-                    f"Zentrale Erkenntnis: {first}. "
-                    "Der Inhalt macht deutlich, dass daraus ein konkreter Blick "
-                    "auf eigenes Verhalten folgen sollte."
+                    f"{first}. Diese Einsicht lohnt sich erst, wenn ich daraus einen anderen "
+                    "Blick auf mein eigenes Verhalten ableite."
                 ),
             ),
             NoteResult(
                 kind="action",
-                title="Konkrete Handlungsempfehlung",
+                title="Ich pruefe meinen Alltag neu",
                 summary_sentence="Pruefe eine eigene Ueberzeugung an einem kleinen Gegenbeispiel.",
                 source_excerpt=second[:160],
                 why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
+                problem=(
+                    "Ich wiederhole Gewohnheiten, obwohl sie mir schon lange nicht "
+                    "mehr helfen."
+                ),
+                core_insight=(
+                    "Ich verstehe, dass eine kleine Gegenprobe oft mehr klaert als "
+                    "langes Nachdenken."
+                ),
+                application=(
+                    "Wenn ich bei einer Routine Widerstand spuere, teste ich bewusst "
+                    "eine kleine Abweichung."
+                ),
+                first_step="Notiere heute eine Gewohnheit und teste eine kleine Abweichung.",
+                deeper_principle=(
+                    "Verhaltensaenderung beginnt oft mit kleinen Experimenten statt "
+                    "mit grossen Beschluessen."
+                ),
+                context_tags=["kontext:Gewohnheit", "kontext:Arbeit"],
                 content_markdown=(
-                    "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem "
-                    "Inhalt, die du bei dir wiedererkennst. "
+                    "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem Inhalt, "
+                    "die du bei dir wiedererkennst. "
                     f"Pruefe anschliessend mit '{second[:80]}' einen kleinen "
                     "Gegenentwurf fuer die naechste konkrete Situation."
                 ),
             ),
             NoteResult(
                 kind="reflection",
-                title="Reflexionsfrage",
+                title="Mir wird Klarheit wichtiger",
                 summary_sentence=(
                     "Die Notiz oeffnet eine Spannung zwischen Sicherheit und Klarheit."
                 ),
                 source_excerpt=third[:160],
                 why_it_matters=(
-                    "Sie hilft, starre Annahmen als konkrete Entscheidungssituation "
-                    "zu sehen."
+                    "Sie hilft, starre Annahmen als konkrete Entscheidungssituation zu sehen."
                 ),
+                problem=(
+                    "Ich halte an Sicherheiten fest, obwohl sie mich innerlich eng "
+                    "machen."
+                ),
+                core_insight=(
+                    "Mir wird klar, dass Sicherheit ohne Pruefung leicht zu neuer "
+                    "Enge fuehrt."
+                ),
+                application=(
+                    "Wenn ich mich vor einem Gespraech zurueckziehe, achte ich auf "
+                    "das Gefuehl von Enge im Koerper."
+                ),
+                first_step="Beobachte heute eine Situation, in der du Klarheit vermeidest.",
+                deeper_principle=(
+                    "Wachstum beginnt oft dort, wo ich Sicherheit nicht mit Wahrheit "
+                    "verwechsle."
+                ),
+                context_tags=["kontext:Konflikt"],
                 content_markdown=(
                     f"Wo erzeugt die Haltung '{third[:90]}' in deinem Alltag eher "
                     "Sicherheit als Klarheit? "
-                    "Was wuerde sich veraendern, wenn du diese Annahme probeweise lockerst?"
+                    "Was wuerde sich veraendern, wenn du diese Annahme probeweise "
+                    "lockerst?"
                 ),
             ),
         ]

@@ -68,7 +68,7 @@ def test_filter_note_results_drops_transcript_like_and_generic_notes():
                 why_it_matters="Sollte wegen generischer Form wegfallen.",
             ),
             NoteResult(
-                title="Brauchbare Handlung",
+                title="Ich pruefe meinen Widerstand",
                 kind="action",
                 content_markdown=(
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
@@ -77,12 +77,14 @@ def test_filter_note_results_drops_transcript_like_and_generic_notes():
                 summary_sentence="Pruefe eine Ueberzeugung.",
                 source_excerpt="Ueberzeugung im Alltag",
                 why_it_matters="Macht die Idee praktisch pruefbar.",
+                problem="Ich reagiere automatisch und bleibe im Widerstand haengen.",
+                first_step="Notiere heute einen Widerstand und pruefe einen Gegenentwurf.",
             ),
         ]
     )
 
     assert len(results) == 1
-    assert results[0].title == "Brauchbare Handlung"
+    assert results[0].title == "Ich pruefe meinen Widerstand"
 
 
 def test_build_transcript_sections_spreads_context_across_later_ideas():
@@ -110,7 +112,7 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
     results = _filter_note_results(
         [
             NoteResult(
-                title="Glaubenssatz pruefen",
+                title="Ich pruefe meinen Glaubenssatz",
                 kind="action",
                 content_markdown=(
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
@@ -119,9 +121,11 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                 summary_sentence="Pruefe eine Ueberzeugung.",
                 source_excerpt="Ueberzeugung im Alltag",
                 why_it_matters="Macht die Idee praktisch pruefbar.",
+                problem="Ich halte an einer unprueften Ueberzeugung fest.",
+                first_step="Notiere heute einen Glaubenssatz und pruefe einen Gegenentwurf.",
             ),
             NoteResult(
-                title="Glaubenssatz pruefen",
+                title="Ich pruefe meinen Glaubenssatz",
                 kind="action",
                 content_markdown=(
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
@@ -130,9 +134,11 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                 summary_sentence="Pruefe eine Ueberzeugung.",
                 source_excerpt="Ueberzeugung im Alltag",
                 why_it_matters="Macht die Idee praktisch pruefbar.",
+                problem="Ich halte an einer unprueften Ueberzeugung fest.",
+                first_step="Notiere heute einen Glaubenssatz und pruefe einen Gegenentwurf.",
             ),
             NoteResult(
-                title="Lernritual einplanen",
+                title="Ich plane mein Lernritual",
                 kind="action",
                 content_markdown=(
                     "Plane fuer morgen ein kurzes Wiederholungsritual mit fester Uhrzeit ein."
@@ -140,12 +146,14 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                 summary_sentence="Plane ein Lernritual.",
                 source_excerpt="Kurzes Wiederholungsritual",
                 why_it_matters="Verankert Lernen im Alltag.",
+                problem="Ich lerne unregelmaessig und verliere dadurch Kontinuitaet.",
+                first_step="Plane heute ein kurzes Lernritual mit fester Uhrzeit.",
             ),
         ]
     )
 
     assert len(results) == 2
     assert [note.title for note in results] == [
-        "Glaubenssatz pruefen",
-        "Lernritual einplanen",
+        "Ich pruefe meinen Glaubenssatz",
+        "Ich plane mein Lernritual",
     ]
