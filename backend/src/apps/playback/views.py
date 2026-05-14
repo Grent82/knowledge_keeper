@@ -171,11 +171,32 @@ class TriggerSummaryView(APIView):
             transcript=transcript,
             kind=kind,
             status=ArtifactStatus.PROCESSING,
-        ).exists()
-        if in_progress:
+        ).order_by("-updated_at")
+        active_processing = next(
+            (summary for summary in in_progress if not summary.error_message.strip()),
+            None,
+        )
+        if active_processing:
             return Response(
                 {"detail": f"Summary of kind '{kind}' is already being generated."},
                 status=http_status.HTTP_409_CONFLICT,
+            )
+
+        stale_processing = next(
+            (summary for summary in in_progress if summary.error_message.strip()),
+            None,
+        )
+        if stale_processing:
+            stale_processing.status = ArtifactStatus.PENDING
+            stale_processing.provider = get_summary_provider_label()
+            stale_processing.error_message = ""
+            stale_processing.save(
+                update_fields=["status", "provider", "error_message", "updated_at"]
+            )
+            summarize_transcript.delay(transcript.id, kind=kind)
+            return Response(
+                {"status": "queued", "media_item_id": media_item.id, "kind": kind},
+                status=http_status.HTTP_202_ACCEPTED,
             )
 
         failed = (

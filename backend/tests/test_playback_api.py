@@ -317,3 +317,49 @@ def test_trigger_summary_resets_failed_artifact_state_before_queue(mock_delay):
     assert summary.provider == "openai"
     assert summary.error_message == ""
     mock_delay.assert_called_once_with(transcript.id, kind="detailed")
+
+
+@patch("apps.playback.views.summarize_transcript.delay")
+@override_settings(SUMMARY_PROVIDER="openai_compatible")
+def test_trigger_summary_recovers_stale_processing_artifact(mock_delay):
+    owner = User.objects.create_user(
+        username="owner-stale-processing-summary",
+        password="secret",
+        role=UserRole.OWNER,
+    )
+    media_item = MediaItem.objects.create(
+        title="Stale Processing Summary Item",
+        media_type=MediaType.AUDIO,
+        owner=owner,
+    )
+    transcript = Transcript.objects.create(
+        media_item=media_item,
+        status=ArtifactStatus.READY,
+        provider="local",
+        content="Some transcript text",
+    )
+    summary = Summary.objects.create(
+        media_item=media_item,
+        transcript=transcript,
+        status=ArtifactStatus.PROCESSING,
+        kind="detailed",
+        provider="local",
+        content="",
+        markdown_content="",
+        error_message="old failed worker run",
+    )
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    response = client.post(
+        f"/api/playback/trigger/{media_item.id}/summary/",
+        {"kind": "detailed"},
+        format="json",
+    )
+
+    summary.refresh_from_db()
+    assert response.status_code == 202
+    assert summary.status == ArtifactStatus.PENDING
+    assert summary.provider == "openai"
+    assert summary.error_message == ""
+    mock_delay.assert_called_once_with(transcript.id, kind="detailed")
