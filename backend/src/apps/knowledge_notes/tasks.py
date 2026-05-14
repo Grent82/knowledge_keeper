@@ -17,6 +17,57 @@ def _split_into_chunks(text: str, words_per_chunk: int = 500) -> list[str]:
     return chunks
 
 
+@shared_task
+def link_notes_by_principle(note_id: int) -> None:
+    """Auto-link a note to others with similar deeper_principle via embedding cosine similarity."""
+    from .models import KnowledgeNote
+    from .providers import get_embedding_provider
+    from .similarity import cosine_similarity
+
+    threshold = float(getattr(django_settings, "PRINCIPLE_LINK_THRESHOLD", 0.85))
+
+    try:
+        note = KnowledgeNote.objects.get(id=note_id)
+    except KnowledgeNote.DoesNotExist:
+        return
+
+    if not note.deeper_principle.strip():
+        return
+
+    try:
+        provider = get_embedding_provider()
+        note_emb = provider.embed_text(note.deeper_principle)
+    except Exception:
+        return
+
+    candidates = (
+        KnowledgeNote.objects.filter(owner=note.owner)
+        .exclude(id=note_id)
+        .exclude(deeper_principle="")
+    )
+
+    linked_ids: list[int] = []
+    for candidate in candidates:
+        if not candidate.deeper_principle.strip():
+            continue
+        try:
+            cand_emb = provider.embed_text(candidate.deeper_principle)
+        except Exception:
+            continue
+        score = cosine_similarity(note_emb, cand_emb)
+        if score >= threshold:
+            linked_ids.append(candidate.id)
+
+    if linked_ids:
+        note.linked_notes.add(*linked_ids)
+        logger.info(
+            "Auto-linked note %d to %d notes via deeper_principle (threshold=%.2f)",
+            note_id,
+            len(linked_ids),
+            threshold,
+        )
+
+
 @shared_task(bind=True, max_retries=3)
 def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> None:
     from apps.playback.models import ArtifactStatus, Transcript
@@ -112,6 +163,9 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
     if notes:
         KnowledgeNote.objects.bulk_create(notes)
         logger.info("Created %d AI knowledge notes for transcript %s", len(notes), transcript_id)
+        for note in notes:
+            update_note_embedding.delay(note.id)
+            link_notes_by_principle.delay(note.id)
     else:
         logger.warning("Note provider returned no results for transcript %s", transcript_id)
 

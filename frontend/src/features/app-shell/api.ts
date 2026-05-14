@@ -203,6 +203,13 @@ export type CreateKnowledgeNotePayload = Pick<
 
 export type UpdateKnowledgeNotePayload = Partial<CreateKnowledgeNotePayload>;
 
+export interface RelatedNote {
+  id: number;
+  title: string;
+  core_insight: string;
+  similarity_score: number;
+}
+
 export async function fetchKnowledgeNotes(mediaItemId?: number): Promise<KnowledgeNote[]> {
   const params = mediaItemId ? `?media_item=${mediaItemId}` : "";
   return request(`/api/knowledge-notes/${params}`);
@@ -221,6 +228,10 @@ export async function updateKnowledgeNote(
 
 export async function deleteKnowledgeNote(id: number): Promise<void> {
   return request(`/api/knowledge-notes/${id}`, { method: "DELETE" });
+}
+
+export async function fetchRelatedNotes(noteId: number): Promise<RelatedNote[]> {
+  return request(`/api/knowledge-notes/${noteId}/related/`);
 }
 
 export async function triggerKnowledgeNoteGeneration(

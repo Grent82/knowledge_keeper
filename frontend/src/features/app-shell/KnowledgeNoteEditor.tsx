@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { createKnowledgeNote, updateKnowledgeNote } from "./api";
+import {
+  createKnowledgeNote,
+  fetchRelatedNotes,
+  type RelatedNote,
+  updateKnowledgeNote,
+} from "./api";
 import { formatKnowledgeNoteTitle, KIND_LABELS } from "./knowledgeNotePresentation";
 import type { KnowledgeNote } from "./types";
 
@@ -34,6 +39,7 @@ export function KnowledgeNoteEditor({
   const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [relatedNotes, setRelatedNotes] = useState<RelatedNote[]>([]);
 
   const linkableNotes = allNotes.filter(
     (n) => n.id !== note?.id && !linkedNoteIds.includes(n.id),
@@ -55,6 +61,30 @@ export function KnowledgeNoteEditor({
     setLinkPickerValue("");
     setPreviewMode(false);
     setError("");
+  }, [note]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (note?.id && note.deeper_principle) {
+      fetchRelatedNotes(note.id)
+        .then((nextRelatedNotes) => {
+          if (!cancelled) {
+            setRelatedNotes(nextRelatedNotes);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setRelatedNotes([]);
+          }
+        });
+    } else {
+      setRelatedNotes([]);
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [note]);
 
   function handleAddLink(): void {
@@ -233,6 +263,41 @@ export function KnowledgeNoteEditor({
                 </div>
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {relatedNotes.length > 0 ? (
+          <div className="related-notes-section">
+            <span className="transformation-label">🔗 Verwandte Erkenntnisse (KI-Vorschlag)</span>
+            <ul className="simple-list compact-list">
+              {relatedNotes.map((related) => (
+                <li key={related.id}>
+                  <div className="related-note-row">
+                    <div className="related-note-info">
+                      <strong>{formatKnowledgeNoteTitle(related.title)}</strong>
+                      {related.core_insight ? (
+                        <span className="muted" style={{ fontSize: "0.8rem" }}>
+                          {related.core_insight.slice(0, 80)}
+                          {related.core_insight.length > 80 ? "…" : ""}
+                        </span>
+                      ) : null}
+                    </div>
+                    {onNavigateToNote ? (
+                      <button
+                        className="secondary-button"
+                        onClick={() => {
+                          const target = allNotes.find((n) => n.id === related.id);
+                          if (target) onNavigateToNote(target);
+                        }}
+                        style={{ fontSize: "0.75rem", padding: "0.2rem 0.5rem" }}
+                        type="button"
+                      >
+                        Öffnen
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
         {linkedNoteIds.length > 0 || allNotes.length > 1 ? (

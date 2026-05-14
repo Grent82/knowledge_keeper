@@ -15,7 +15,7 @@ from .models import KnowledgeNote
 from .providers import get_embedding_provider
 from .serializers import KnowledgeNoteSerializer
 from .similarity import cosine_similarity
-from .tasks import generate_knowledge_notes, update_note_embedding
+from .tasks import generate_knowledge_notes, link_notes_by_principle, update_note_embedding
 
 
 class KnowledgeNoteViewSet(ModelViewSet):
@@ -66,10 +66,59 @@ class KnowledgeNoteViewSet(ModelViewSet):
     def perform_create(self, serializer):
         note = serializer.save(owner=self.request.user)
         update_note_embedding.delay(note.id)
+        link_notes_by_principle.delay(note.id)
 
     def perform_update(self, serializer):
         note = serializer.save()
         update_note_embedding.delay(note.id)
+        link_notes_by_principle.delay(note.id)
+
+
+class RelatedNotesView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+
+    def get(self, request: Request, note_id: int) -> Response:
+        try:
+            note = KnowledgeNote.objects.get(id=note_id, owner=request.user)
+        except KnowledgeNote.DoesNotExist:
+            return Response({"detail": "Not found."}, status=http_status.HTTP_404_NOT_FOUND)
+
+        if not note.deeper_principle.strip():
+            return Response([])
+
+        try:
+            provider = get_embedding_provider()
+            note_emb = provider.embed_text(note.deeper_principle)
+        except Exception:
+            return Response([])
+
+        candidates = (
+            KnowledgeNote.objects.filter(owner=request.user)
+            .exclude(id=note_id)
+            .exclude(deeper_principle="")
+        )
+
+        scored: list[dict[str, int | str | float]] = []
+        for candidate in candidates:
+            if not candidate.deeper_principle.strip():
+                continue
+            try:
+                cand_emb = provider.embed_text(candidate.deeper_principle)
+            except Exception:
+                continue
+            score = cosine_similarity(note_emb, cand_emb)
+            if score > 0.1:
+                scored.append(
+                    {
+                        "id": candidate.id,
+                        "title": candidate.title,
+                        "core_insight": candidate.core_insight,
+                        "similarity_score": round(score, 4),
+                    }
+                )
+
+        scored.sort(key=lambda item: -float(item["similarity_score"]))
+        return Response(scored[:5])
 
 
 class ContextTagsView(APIView):
