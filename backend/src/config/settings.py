@@ -116,6 +116,10 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR.parent / "var" / "static"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR.parent / "var" / "media"
+# Media storage provider: "local" (default) or "s3"
+# S3 env vars: S3_BUCKET, S3_ENDPOINT_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY,
+#              AWS_REGION, S3_PUBLIC_URL_BASE
+MEDIA_STORAGE_PROVIDER = os.getenv("MEDIA_STORAGE_PROVIDER", "local")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 

@@ -82,3 +82,21 @@ pnpm --filter @knowledge-keeper/frontend build
 ## Hinweis
 
 SQLite wird aktuell fuer das lokale Backend-Basissetup verwendet. PostgreSQL bleibt die geplante Ziel-Datenbank fuer die produktive Architektur.
+
+## Media Storage
+
+By default media files are stored locally under `var/media/`.
+
+To switch to S3-compatible storage (e.g. Hostinger Object Storage or MinIO), set:
+
+```env
+MEDIA_STORAGE_PROVIDER=s3
+S3_BUCKET=my-bucket
+S3_ENDPOINT_URL=https://s3.example.com   # omit for AWS
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=auto
+S3_PUBLIC_URL_BASE=https://cdn.example.com   # optional, for public URLs
+```
+
+boto3 must be installed: `pip install boto3`
