@@ -39,6 +39,12 @@ def test_generate_knowledge_notes_persists_structured_fields(mock_get_provider):
             summary_sentence="Eine klare Kernaussage.",
             source_excerpt="Kurzer Transkriptinhalt",
             why_it_matters="Sie macht die Kernidee schnell wiederverwendbar.",
+            problem="Unklare Prioritaeten im Alltag.",
+            core_insight="Ich erkenne, dass Klarheit vor Tempo kommt.",
+            application="Bei der Tagesplanung vor dem ersten Meeting.",
+            first_step="Ich schreibe heute drei Prioritaeten auf.",
+            deeper_principle="Weniger Reibung schafft mehr Fokus.",
+            context_tags=["kontext:planung", "kontext:fokus"],
         )
     ]
 
@@ -49,3 +55,9 @@ def test_generate_knowledge_notes_persists_structured_fields(mock_get_provider):
     assert note.summary_sentence == "Eine klare Kernaussage."
     assert note.source_excerpt == "Kurzer Transkriptinhalt"
     assert note.why_it_matters == "Sie macht die Kernidee schnell wiederverwendbar."
+    assert note.problem == "Unklare Prioritaeten im Alltag."
+    assert note.core_insight == "Ich erkenne, dass Klarheit vor Tempo kommt."
+    assert note.application == "Bei der Tagesplanung vor dem ersten Meeting."
+    assert note.first_step == "Ich schreibe heute drei Prioritaeten auf."
+    assert note.deeper_principle == "Weniger Reibung schafft mehr Fokus."
+    assert note.context_tags == ["kontext:planung", "kontext:fokus"]

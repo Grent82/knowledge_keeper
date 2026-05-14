@@ -24,6 +24,12 @@ class KnowledgeNote(models.Model):
     summary_sentence = models.TextField(blank=True)
     source_excerpt = models.TextField(blank=True)
     why_it_matters = models.TextField(blank=True)
+    problem = models.TextField(blank=True, default="")
+    core_insight = models.TextField(blank=True, default="")
+    application = models.TextField(blank=True, default="")
+    first_step = models.TextField(blank=True, default="")
+    deeper_principle = models.TextField(blank=True, default="")
+    context_tags = models.JSONField(default=list, blank=True)
     kind = models.CharField(
         max_length=20,
         choices=NoteKind.choices,

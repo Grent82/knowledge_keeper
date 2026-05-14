@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 
@@ -10,6 +10,12 @@ class NoteResult:
     summary_sentence: str = ""
     source_excerpt: str = ""
     why_it_matters: str = ""
+    problem: str = ""
+    core_insight: str = ""
+    application: str = ""
+    first_step: str = ""
+    deeper_principle: str = ""
+    context_tags: list[str] = field(default_factory=list)
 
 
 class KnowledgeNoteProvider(Protocol):

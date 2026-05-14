@@ -118,6 +118,12 @@ export type KnowledgeNote = {
   owner: number;
   title: string;
   content_markdown: string;
+  problem?: string;
+  core_insight?: string;
+  application?: string;
+  first_step?: string;
+  deeper_principle?: string;
+  context_tags?: string[];
   kind: "insight" | "action" | "reflection" | "question" | "general";
   ai_generated: boolean;
   media_item: number | null;
