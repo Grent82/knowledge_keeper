@@ -1,6 +1,7 @@
 import logging
 
 from celery import shared_task
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -69,3 +70,25 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
         logger.info("Created %d AI knowledge notes for transcript %s", len(notes), transcript_id)
     else:
         logger.warning("Note provider returned no results for transcript %s", transcript_id)
+
+
+@shared_task
+def update_note_embedding(note_id: int) -> None:
+    from .models import KnowledgeNote
+    from .providers import get_embedding_provider
+
+    try:
+        note = KnowledgeNote.objects.get(id=note_id)
+    except KnowledgeNote.DoesNotExist:
+        return
+
+    text = f"{note.title}\n{note.content_markdown}".strip()
+    if not text:
+        return
+
+    provider = get_embedding_provider()
+    embedding = provider.embed_text(text)
+    KnowledgeNote.objects.filter(id=note_id).update(
+        embedding=embedding,
+        embedding_updated_at=timezone.now(),
+    )

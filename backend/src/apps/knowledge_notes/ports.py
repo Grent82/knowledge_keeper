@@ -14,3 +14,7 @@ class NoteResult:
 
 class KnowledgeNoteProvider(Protocol):
     def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]: ...
+
+
+class EmbeddingProvider(Protocol):
+    def embed_text(self, text: str) -> list[float]: ...

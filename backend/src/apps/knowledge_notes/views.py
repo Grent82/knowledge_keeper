@@ -11,7 +11,7 @@ from apps.playback.models import ArtifactStatus, Transcript
 
 from .models import KnowledgeNote
 from .serializers import KnowledgeNoteSerializer
-from .tasks import generate_knowledge_notes
+from .tasks import generate_knowledge_notes, update_note_embedding
 
 
 class KnowledgeNoteViewSet(ModelViewSet):
@@ -36,7 +36,12 @@ class KnowledgeNoteViewSet(ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        note = serializer.save(owner=self.request.user)
+        update_note_embedding.delay(note.id)
+
+    def perform_update(self, serializer):
+        note = serializer.save()
+        update_note_embedding.delay(note.id)
 
 
 class TriggerKnowledgeNoteGenerationView(APIView):
