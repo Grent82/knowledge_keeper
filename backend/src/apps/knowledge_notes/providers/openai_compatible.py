@@ -21,6 +21,9 @@ _GENERIC_REFLECTION_PREFIXES = (
     "was waere die wichtigste erkenntnis",
 )
 _GENERIC_ACTION_PHRASES = ("zum beispiel:",)
+_MAX_SECTION_WORDS = 32
+_MAX_SECTIONS = 6
+_MAX_SENTENCES_PER_SECTION = 2
 
 _USER_PROMPT_TEMPLATE = """Analyze the following transcript and generate 4-6 knowledge notes.
 
@@ -67,6 +70,7 @@ def _looks_like_generic_action(text: str) -> bool:
 
 def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
     filtered: list[NoteResult] = []
+    seen_signatures: set[tuple[str, str, str]] = set()
     for result in results:
         content = _normalize_whitespace(result.content_markdown)
         if not content:
@@ -77,9 +81,14 @@ def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
             continue
         if result.kind == "action" and _looks_like_generic_action(content):
             continue
+        title = result.title.strip()[:255]
+        signature = (result.kind, title.lower(), content.lower())
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
         filtered.append(
             NoteResult(
-                title=result.title.strip()[:255],
+                title=title,
                 content_markdown=content,
                 kind=result.kind,
             )
@@ -93,13 +102,84 @@ def _extract_sentences(transcript_text: str) -> list[str]:
     return [part.strip(" .") for part in parts if part.strip()]
 
 
+def _chunk_sentences(
+    sentences: list[str],
+    max_section_words: int = _MAX_SECTION_WORDS,
+    max_sentences_per_section: int = _MAX_SENTENCES_PER_SECTION,
+) -> list[list[str]]:
+    chunks: list[list[str]] = []
+    current: list[str] = []
+    current_words = 0
+
+    for sentence in sentences:
+        sentence_words = _word_count(sentence)
+        if current and (
+            current_words + sentence_words > max_section_words
+            or len(current) >= max_sentences_per_section
+        ):
+            chunks.append(current)
+            current = [sentence]
+            current_words = sentence_words
+            continue
+        current.append(sentence)
+        current_words += sentence_words
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _pick_focus_sentence(chunk: list[str]) -> str:
+    return max(chunk, key=lambda sentence: (_word_count(sentence), -chunk.index(sentence)))
+
+
+def _build_transcript_sections(
+    transcript_text: str,
+    max_section_words: int = _MAX_SECTION_WORDS,
+    max_sections: int = _MAX_SECTIONS,
+) -> list[dict[str, str]]:
+    sentences = _extract_sentences(transcript_text)
+    chunks = _chunk_sentences(sentences, max_section_words=max_section_words)
+    if len(chunks) <= max_sections:
+        selected_chunks = chunks
+    else:
+        selected_chunks = []
+        last_index = len(chunks) - 1
+        for index in range(max_sections):
+            raw_position = round(index * last_index / (max_sections - 1))
+            chunk = chunks[raw_position]
+            if selected_chunks and chunk == selected_chunks[-1]:
+                continue
+            selected_chunks.append(chunk)
+
+    return [
+        {
+            "focus_sentence": _pick_focus_sentence(chunk),
+            "excerpt": " ".join(chunk),
+        }
+        for chunk in selected_chunks
+    ]
+
+
+def _build_prompt_context(transcript_text: str) -> str:
+    sections = _build_transcript_sections(transcript_text)
+    if not sections:
+        return transcript_text[:12000]
+
+    section_lines = [
+        f"{index}. Focus: {section['focus_sentence']}\nExcerpt: {section['excerpt']}"
+        for index, section in enumerate(sections, start=1)
+    ]
+    return "\n\n".join(section_lines)[:12000]
+
+
 class OpenAICompatibleNoteProvider:
     def __init__(self, base_url: str, api_key: str, model: str) -> None:
         self.client = OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
 
     def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
-        prompt = _USER_PROMPT_TEMPLATE.format(transcript=transcript_text[:12000])
+        prompt = _USER_PROMPT_TEMPLATE.format(transcript=_build_prompt_context(transcript_text))
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -138,20 +218,21 @@ class StubNoteProvider:
     """Returns deterministic stub notes for local development without an AI backend."""
 
     def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
-        sentences = _extract_sentences(transcript_text)
+        sections = _build_transcript_sections(transcript_text, max_sections=3)
+        focus_sentences = [section["focus_sentence"] for section in sections]
         first = (
-            sentences[0]
-            if sentences
+            focus_sentences[0]
+            if focus_sentences
             else "Der Inhalt enthaelt mehrere anschlussfaehige Gedanken."
         )
         second = (
-            sentences[1]
-            if len(sentences) > 1
+            focus_sentences[1]
+            if len(focus_sentences) > 1
             else "Ein naechster Schritt koennte sein, die zentrale Aussage bewusst zu notieren."
         )
         third = (
-            sentences[2]
-            if len(sentences) > 2
+            focus_sentences[2]
+            if len(focus_sentences) > 2
             else "Mehr Spielraum entsteht oft dort, wo feste Annahmen geprueft werden."
         )
 
