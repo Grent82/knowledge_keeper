@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import status as http_status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -27,6 +28,11 @@ class KnowledgeNoteViewSet(ModelViewSet):
         transcript_id = self.request.query_params.get("transcript")
         if transcript_id:
             queryset = queryset.filter(transcript_id=transcript_id)
+        q = self.request.query_params.get("q", "").strip()
+        if q:
+            queryset = queryset.filter(
+                models.Q(title__icontains=q) | models.Q(content_markdown__icontains=q)
+            )
         return queryset
 
     def perform_create(self, serializer):

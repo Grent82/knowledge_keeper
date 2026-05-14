@@ -192,18 +192,25 @@ export async function triggerSummary(
   });
 }
 
+export type CreateKnowledgeNotePayload = Pick<
+  KnowledgeNote,
+  "title" | "content_markdown" | "kind" | "media_item" | "transcript" | "linked_notes"
+>;
+
+export type UpdateKnowledgeNotePayload = Partial<CreateKnowledgeNotePayload>;
+
 export async function fetchKnowledgeNotes(mediaItemId?: number): Promise<KnowledgeNote[]> {
   const params = mediaItemId ? `?media_item=${mediaItemId}` : "";
   return request(`/api/knowledge-notes/${params}`);
 }
 
-export async function createKnowledgeNote(data: Partial<KnowledgeNote>): Promise<KnowledgeNote> {
+export async function createKnowledgeNote(data: CreateKnowledgeNotePayload): Promise<KnowledgeNote> {
   return request("/api/knowledge-notes/", { method: "POST", body: JSON.stringify(data) });
 }
 
 export async function updateKnowledgeNote(
   id: number,
-  data: Partial<KnowledgeNote>,
+  data: UpdateKnowledgeNotePayload,
 ): Promise<KnowledgeNote> {
   return request(`/api/knowledge-notes/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 }

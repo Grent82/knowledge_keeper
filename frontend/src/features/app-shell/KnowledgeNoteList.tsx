@@ -1,5 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
+
 import type { KnowledgeNote } from "./types";
-import { formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
+import { formatKnowledgeNoteKind, formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
 
 type KnowledgeNoteListProps = {
   notes: KnowledgeNote[];
@@ -12,6 +14,24 @@ function formatUpdatedAt(value: string): string {
 }
 
 export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteListProps) {
+  const [query, setQuery] = useState("");
+  const filteredNotes = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    if (!normalizedQuery) {
+      return notes;
+    }
+
+    return notes.filter((note) => {
+      const title = formatKnowledgeNoteTitle(note.title).toLocaleLowerCase();
+      const content = note.content_markdown.toLocaleLowerCase();
+      return title.includes(normalizedQuery) || content.includes(normalizedQuery);
+    });
+  }, [notes, query]);
+
+  useEffect(() => {
+    setQuery("");
+  }, [notes]);
+
   return (
     <article className="card">
       <div className="card-header">
@@ -26,16 +46,33 @@ export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteLi
       {notes.length === 0 ? (
         <p className="empty-state">Noch keine Wissensnotizen vorhanden.</p>
       ) : (
-        <ul className="simple-list compact-list">
-          {notes.map((note) => (
-            <li key={note.id}>
-              <button className="list-button media-list-button" onClick={() => onSelect(note)} type="button">
-                <strong>{formatKnowledgeNoteTitle(note.title)}</strong>
-                <span className="muted">Aktualisiert: {formatUpdatedAt(note.updated_at)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <input
+            aria-label="Notizen durchsuchen"
+            className="search-input"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Notizen durchsuchen…"
+            type="search"
+            value={query}
+          />
+          {filteredNotes.length === 0 ? (
+            <p className="empty-state">Keine Notizen gefunden.</p>
+          ) : (
+            <ul className="simple-list compact-list">
+              {filteredNotes.map((note) => (
+                <li key={note.id}>
+                  <button className="list-button media-list-button" onClick={() => onSelect(note)} type="button">
+                    <span className="knowledge-note-title-row">
+                      <strong>{formatKnowledgeNoteTitle(note.title)}</strong>
+                      <span className="tag">{formatKnowledgeNoteKind(note.kind)}</span>
+                    </span>
+                    <span className="muted">Aktualisiert: {formatUpdatedAt(note.updated_at)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </article>
   );

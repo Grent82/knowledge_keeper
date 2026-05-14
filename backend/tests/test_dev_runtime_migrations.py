@@ -1,5 +1,5 @@
-from unittest.mock import patch
 import json
+from unittest.mock import patch
 
 from django.http import HttpResponse
 from django.test import RequestFactory, override_settings
@@ -21,7 +21,10 @@ def test_pending_migrations_blocker_returns_503_for_api_requests(_mock_pending):
 
     assert response.status_code == 503
     assert json.loads(response.content) == {
-        "detail": "Pending database migrations detected. Restart the dev backend after applying migrations."
+        "detail": (
+            "Pending database migrations detected. Restart the dev backend after applying "
+            "migrations."
+        )
     }
 
 

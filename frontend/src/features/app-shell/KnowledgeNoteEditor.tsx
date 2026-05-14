@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { createKnowledgeNote, updateKnowledgeNote } from "./api";
-import { formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
+import { formatKnowledgeNoteTitle, KIND_LABELS } from "./knowledgeNotePresentation";
 import type { KnowledgeNote } from "./types";
 
 type KnowledgeNoteEditorProps = {
@@ -26,6 +26,7 @@ export function KnowledgeNoteEditor({
 }: KnowledgeNoteEditorProps) {
   const [title, setTitle] = useState(note ? formatKnowledgeNoteTitle(note.title) : "");
   const [contentMarkdown, setContentMarkdown] = useState(note?.content_markdown ?? "");
+  const [kind, setKind] = useState(note?.kind ?? "general");
   const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,6 +42,7 @@ export function KnowledgeNoteEditor({
   useEffect(() => {
     setTitle(note ? formatKnowledgeNoteTitle(note.title) : "");
     setContentMarkdown(note?.content_markdown ?? "");
+    setKind(note?.kind ?? "general");
     setPreviewMode(false);
     setError("");
   }, [note]);
@@ -60,10 +62,12 @@ export function KnowledgeNoteEditor({
         ? await updateKnowledgeNote(note.id, {
             title: trimmedTitle,
             content_markdown: contentMarkdown,
+            kind,
           })
         : await createKnowledgeNote({
             title: trimmedTitle,
             content_markdown: contentMarkdown,
+            kind,
             media_item: initialMediaItemId,
             transcript: initialTranscriptId,
             linked_notes: [],
@@ -127,6 +131,16 @@ export function KnowledgeNoteEditor({
         <label className="field">
           <span>Titel</span>
           <input onChange={(event) => setTitle(event.target.value)} type="text" value={title} />
+        </label>
+        <label className="field">
+          <span>Typ</span>
+          <select onChange={(event) => setKind(event.target.value as KnowledgeNote["kind"])} value={kind}>
+            {Object.entries(KIND_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </label>
         {previewMode ? (
           <div className="markdown-preview">
