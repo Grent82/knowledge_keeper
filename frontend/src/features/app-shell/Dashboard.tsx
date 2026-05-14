@@ -6,6 +6,7 @@ import { CategoryManager } from "./CategoryManager";
 import { CategoryTree } from "./CategoryTree";
 import { CoachPanel } from "./CoachPanel";
 import { ExternalSourceForm } from "./ExternalSourceForm";
+import { KnowledgeGraphPanel } from "./KnowledgeGraphPanel";
 import { KnowledgeNoteEditor } from "./KnowledgeNoteEditor";
 import { KnowledgeNoteList } from "./KnowledgeNoteList";
 import { MediaPlayerCard } from "./MediaPlayerCard";
@@ -397,6 +398,16 @@ export function Dashboard({
                 </p>
               </article>
             )}
+          </section>
+
+          <section className="grid">
+            <KnowledgeGraphPanel
+              notes={knowledgeNotes}
+              onSelectNote={(note) => {
+                setSelectedNote(note);
+                setShowNoteEditor(true);
+              }}
+            />
           </section>
 
           <h2 className="section-heading">Library Management</h2>
