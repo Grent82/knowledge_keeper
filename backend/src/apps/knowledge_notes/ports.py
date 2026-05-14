@@ -24,3 +24,9 @@ class KnowledgeNoteProvider(Protocol):
 
 class EmbeddingProvider(Protocol):
     def embed_text(self, text: str) -> list[float]: ...
+
+
+class SubstanceGateProvider(Protocol):
+    def assess(self, text: str) -> int:
+        """Return transformation potential score 0-10. >= threshold means proceed."""
+        ...

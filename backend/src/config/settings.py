@@ -156,6 +156,8 @@ WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", str(BASE_DIR.parent / "var" /
 
 # AI / Summary provider
 KNOWLEDGE_NOTE_PROVIDER = os.getenv("KNOWLEDGE_NOTE_PROVIDER", "stub")
+SUBSTANCE_GATE_PROVIDER = os.getenv("SUBSTANCE_GATE_PROVIDER", "stub")
+SUBSTANCE_GATE_THRESHOLD = int(os.getenv("SUBSTANCE_GATE_THRESHOLD", "6"))
 SUMMARY_PROVIDER = os.getenv("SUMMARY_PROVIDER", "stub")
 AI_HUB_BASE_URL = os.getenv("AI_HUB_BASE_URL", "")
 AI_HUB_API_KEY = os.getenv("AI_HUB_API_KEY", "")

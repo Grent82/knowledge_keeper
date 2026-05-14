@@ -1,9 +1,20 @@
 import logging
 
 from celery import shared_task
+from django.conf import settings as django_settings
 from django.utils import timezone
 
+from .providers import get_substance_gate_provider
+
 logger = logging.getLogger(__name__)
+
+
+def _split_into_chunks(text: str, words_per_chunk: int = 500) -> list[str]:
+    words = text.split()
+    chunks: list[str] = []
+    for index in range(0, len(words), words_per_chunk):
+        chunks.append(" ".join(words[index : index + words_per_chunk]))
+    return chunks
 
 
 @shared_task(bind=True, max_retries=3)
@@ -41,7 +52,34 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
 
     try:
         provider = get_note_provider()
-        results = provider.generate(transcript_text, language_code=transcript.language_code)
+        gate = get_substance_gate_provider()
+        threshold = getattr(django_settings, "SUBSTANCE_GATE_THRESHOLD", 6)
+
+        chunks = _split_into_chunks(transcript_text)
+        qualified_chunks: list[str] = []
+        for chunk in chunks:
+            score = gate.assess(chunk)
+            if score >= threshold:
+                qualified_chunks.append(chunk)
+            else:
+                logger.info(
+                    "Substanz-Gate: Score %d < %d — Chunk übersprungen (transcript %s)",
+                    score,
+                    threshold,
+                    transcript_id,
+                )
+
+        if not qualified_chunks:
+            logger.warning(
+                "Substanz-Gate: Alle Chunks unterhalb Schwellwert %d — keine Notizen erzeugt "
+                "(transcript %s)",
+                threshold,
+                transcript_id,
+            )
+            return
+
+        qualified_text = "\n\n".join(qualified_chunks)
+        results = provider.generate(qualified_text, language_code=transcript.language_code)
     except Exception as exc:
         logger.error("Note generation failed for transcript %s: %s", transcript_id, exc)
         raise self.retry(exc=exc, countdown=60) from exc
