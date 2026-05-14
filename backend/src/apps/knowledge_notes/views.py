@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Case, IntegerField, When
 from rest_framework import status as http_status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -10,7 +11,9 @@ from apps.common.permissions import IsOwnerRole
 from apps.playback.models import ArtifactStatus, Transcript
 
 from .models import KnowledgeNote
+from .providers import get_embedding_provider
 from .serializers import KnowledgeNoteSerializer
+from .similarity import cosine_similarity
 from .tasks import generate_knowledge_notes, update_note_embedding
 
 
@@ -29,6 +32,23 @@ class KnowledgeNoteViewSet(ModelViewSet):
         if transcript_id:
             queryset = queryset.filter(transcript_id=transcript_id)
         q = self.request.query_params.get("q", "").strip()
+        semantic = self.request.query_params.get("semantic", "").lower() in ("true", "1")
+        if semantic and q:
+            query_embedding = get_embedding_provider().embed_text(q)
+            all_notes = list(queryset.exclude(embedding=None))
+            scored = [
+                (note, cosine_similarity(query_embedding, note.embedding))
+                for note in all_notes
+            ]
+            scored.sort(key=lambda item: -item[1])
+            top_ids = [note.id for note, score in scored[:10] if score > 0.0]
+            if not top_ids:
+                return queryset.none()
+            ordering = Case(
+                *[When(id=pk, then=pos) for pos, pk in enumerate(top_ids)],
+                output_field=IntegerField(),
+            )
+            return queryset.filter(id__in=top_ids).order_by(ordering)
         if q:
             queryset = queryset.filter(
                 models.Q(title__icontains=q) | models.Q(content_markdown__icontains=q)

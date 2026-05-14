@@ -50,6 +50,7 @@ def test_chat_endpoint_returns_answer_and_citations(mock_retrieve_segments, mock
     assert response.data["answer"] == "Arbeite mit klaren Wiederholungsblaecken."
     assert response.data["response_mode"] == "grounded_answer"
     assert response.data["source_semantics"] == "related_sources"
+    assert response.data["relevant_notes"] == []
     assert response.data["cited_segments"][0]["segment_id"] == 11
     assert (
         response.data["cited_segments"][0]["snippet"]
@@ -120,6 +121,7 @@ def test_chat_endpoint_returns_empty_citations_when_no_hits(
     assert response.data["response_mode"] == "sources_only"
     assert response.data["source_semantics"] == "related_sources"
     assert response.data["cited_segments"] == []
+    assert response.data["relevant_notes"] == []
     assert "keine passenden" in response.data["answer"]
 
 
