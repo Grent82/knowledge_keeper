@@ -5,6 +5,12 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "dev": "bash ./scripts/dev.sh",
-    "quality": "make quality"
+    "quality": "make quality",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
   }
 }

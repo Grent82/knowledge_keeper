@@ -1,5 +1,5 @@
-.PHONY: help doctor beads-lint quality format lint test typecheck backend-check frontend-install backend-install \
-        docker-up docker-down docker-logs docker-build docker-prod-build docker-migrate docker-shell
+.PHONY: help doctor beads-lint quality format lint test typecheck e2e e2e-install backend-check frontend-install \
+        backend-install docker-up docker-down docker-logs docker-build docker-prod-build docker-migrate docker-shell
 
 PYTHON := .venv/bin/python
 PIP := .venv/bin/pip
@@ -7,15 +7,17 @@ PNPM := pnpm
 
 help:
 	@printf "Targets:\\n"
-	@printf "  doctor      Run backlog and repo health checks\\n"
-	@printf "  beads-lint  Validate beads hygiene\\n"
-	@printf "  quality     Run currently available quality gates\\n"
-	@printf "  frontend-install  Install frontend dependencies\\n"
-	@printf "  backend-install   Create local venv and install backend dependencies\\n"
-	@printf "  format      Run available formatting checks\\n"
-	@printf "  lint        Run available lint checks\\n"
-	@printf "  test        Run available tests/checks\\n"
-	@printf "  typecheck   Run available type checks\\n"
+	@printf "  doctor           Run backlog and repo health checks\\n"
+	@printf "  beads-lint       Validate beads hygiene\\n"
+	@printf "  quality          Run currently available quality gates\\n"
+	@printf "  e2e              Run Playwright E2E tests (requires running servers)\\n"
+	@printf "  e2e-install      Install Playwright browsers\\n"
+	@printf "  frontend-install Install frontend dependencies\\n"
+	@printf "  backend-install  Create local venv and install backend dependencies\\n"
+	@printf "  format           Run available formatting checks\\n"
+	@printf "  lint             Run available lint checks\\n"
+	@printf "  test             Run available tests/checks\\n"
+	@printf "  typecheck        Run available type checks\\n"
 
 doctor:
 	bd doctor
@@ -48,6 +50,25 @@ typecheck:
 
 frontend-install:
 	$(PNPM) install
+
+# ── E2E (Playwright) ────────────────────────────────────────────────────────────
+#
+# Requires both servers to be running BEFORE calling this target:
+#
+#   Backend:   .venv/bin/python backend/manage.py runserver
+#   Frontend:  pnpm --filter @knowledge-keeper/frontend dev
+#
+# Override base URL if frontend uses a different port (vite picks next free port):
+#   E2E_BASE_URL=http://localhost:3001 make e2e
+#
+# The owner account must exist (run once):
+#   .venv/bin/python backend/manage.py bootstrap_owner --username owner --password secret
+
+e2e:
+	$(PNPM) exec playwright test
+
+e2e-install:
+	$(PNPM) exec playwright install chromium
 
 backend-install:
 	python3 -m venv .venv
