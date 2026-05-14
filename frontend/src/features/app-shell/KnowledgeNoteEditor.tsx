@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { createKnowledgeNote, updateKnowledgeNote } from "./api";
@@ -13,6 +13,7 @@ type KnowledgeNoteEditorProps = {
   onDelete?: (noteId: number) => Promise<void>;
   onSave: (note: KnowledgeNote) => void;
   onClose: () => void;
+  onNavigateToNote?: (note: KnowledgeNote) => void;
 };
 
 export function KnowledgeNoteEditor({
@@ -23,29 +24,41 @@ export function KnowledgeNoteEditor({
   onDelete,
   onSave,
   onClose,
+  onNavigateToNote,
 }: KnowledgeNoteEditorProps) {
   const [title, setTitle] = useState(note ? formatKnowledgeNoteTitle(note.title) : "");
   const [contentMarkdown, setContentMarkdown] = useState(note?.content_markdown ?? "");
   const [kind, setKind] = useState(note?.kind ?? "general");
+  const [linkedNoteIds, setLinkedNoteIds] = useState<number[]>(note?.linked_notes ?? []);
+  const [linkPickerValue, setLinkPickerValue] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const linkedNotes = useMemo(
-    () =>
-      (note?.linked_notes ?? []).map((linkedNoteId) => {
-        const linkedNote = allNotes.find((candidate) => candidate.id === linkedNoteId);
-        return linkedNote ? formatKnowledgeNoteTitle(linkedNote.title) : `Notiz #${linkedNoteId}`;
-      }),
-    [allNotes, note?.linked_notes],
+
+  const linkableNotes = allNotes.filter(
+    (n) => n.id !== note?.id && !linkedNoteIds.includes(n.id),
   );
 
   useEffect(() => {
     setTitle(note ? formatKnowledgeNoteTitle(note.title) : "");
     setContentMarkdown(note?.content_markdown ?? "");
     setKind(note?.kind ?? "general");
+    setLinkedNoteIds(note?.linked_notes ?? []);
+    setLinkPickerValue("");
     setPreviewMode(false);
     setError("");
   }, [note]);
+
+  function handleAddLink(): void {
+    const id = parseInt(linkPickerValue, 10);
+    if (!id || linkedNoteIds.includes(id)) return;
+    setLinkedNoteIds((prev) => [...prev, id]);
+    setLinkPickerValue("");
+  }
+
+  function handleRemoveLink(id: number): void {
+    setLinkedNoteIds((prev) => prev.filter((n) => n !== id));
+  }
 
   async function handleSave(): Promise<void> {
     const trimmedTitle = title.trim();
@@ -63,6 +76,7 @@ export function KnowledgeNoteEditor({
             title: trimmedTitle,
             content_markdown: contentMarkdown,
             kind,
+            linked_notes: linkedNoteIds,
           })
         : await createKnowledgeNote({
             title: trimmedTitle,
@@ -70,7 +84,7 @@ export function KnowledgeNoteEditor({
             kind,
             media_item: initialMediaItemId,
             transcript: initialTranscriptId,
-            linked_notes: [],
+            linked_notes: linkedNoteIds,
           });
       onSave(savedNote);
     } catch (nextError) {
@@ -160,13 +174,61 @@ export function KnowledgeNoteEditor({
             />
           </label>
         )}
-        {linkedNotes.length > 0 ? (
-          <div className="note-chip-list">
-            {linkedNotes.map((linkedTitle) => (
-              <span className="note-chip" key={linkedTitle}>
-                {linkedTitle}
-              </span>
-            ))}
+        {linkedNoteIds.length > 0 || allNotes.length > 1 ? (
+          <div className="field">
+            <span>Verlinkte Notizen</span>
+            <div className="note-chip-list">
+              {linkedNoteIds.map((id) => {
+                const linked = allNotes.find((n) => n.id === id);
+                const label = linked ? formatKnowledgeNoteTitle(linked.title) : `Notiz #${id}`;
+                return (
+                  <span className="note-chip" key={id}>
+                    {onNavigateToNote && linked ? (
+                      <button
+                        className="chip-link"
+                        onClick={() => onNavigateToNote(linked)}
+                        type="button"
+                      >
+                        {label}
+                      </button>
+                    ) : (
+                      label
+                    )}
+                    <button
+                      aria-label={`Verlinkung mit ${label} entfernen`}
+                      className="chip-remove"
+                      onClick={() => handleRemoveLink(id)}
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+            {linkableNotes.length > 0 ? (
+              <div className="inline-actions">
+                <select
+                  aria-label="Notiz zum Verlinken auswählen"
+                  onChange={(e) => setLinkPickerValue(e.target.value)}
+                  value={linkPickerValue}
+                >
+                  <option value="">Notiz auswählen…</option>
+                  {linkableNotes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {formatKnowledgeNoteTitle(n.title)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={!linkPickerValue}
+                  onClick={handleAddLink}
+                  type="button"
+                >
+                  Verlinkung hinzufügen
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
         {error ? <p className="error-text">{error}</p> : null}

@@ -380,6 +380,9 @@ export function Dashboard({
                 note={selectedNote}
                 onClose={() => setShowNoteEditor(false)}
                 onDelete={handleNoteDelete}
+                onNavigateToNote={(targetNote) => {
+                  setSelectedNote(targetNote);
+                }}
                 onSave={(note) => {
                   void handleNoteSaved(note);
                 }}
