@@ -21,6 +21,9 @@ class KnowledgeNote(models.Model):
     )
     title = models.CharField(max_length=255)
     content_markdown = models.TextField(blank=True)
+    summary_sentence = models.TextField(blank=True)
+    source_excerpt = models.TextField(blank=True)
+    why_it_matters = models.TextField(blank=True)
     kind = models.CharField(
         max_length=20,
         choices=NoteKind.choices,

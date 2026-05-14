@@ -7,6 +7,9 @@ class NoteResult:
     title: str
     content_markdown: str
     kind: str  # one of NoteKind values
+    summary_sentence: str = ""
+    source_excerpt: str = ""
+    why_it_matters: str = ""
 
 
 class KnowledgeNoteProvider(Protocol):

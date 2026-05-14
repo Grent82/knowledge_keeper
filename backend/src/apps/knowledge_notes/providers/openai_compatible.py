@@ -30,6 +30,9 @@ _USER_PROMPT_TEMPLATE = """Analyze the following transcript and generate 4-6 kno
 For each note, produce a JSON object with these exact keys:
 - "kind": one of "insight", "action", "reflection", "question"
 - "title": short descriptive title (max 80 chars)
+- "summary_sentence": one short sentence that states the note's core point
+- "source_excerpt": a short excerpt or phrase from the transcript that grounds the note
+- "why_it_matters": one short sentence explaining why the note is worth keeping
 - "content_markdown": the note body in Markdown (max 2 short sentences or 2 bullets)
 
 Rules:
@@ -73,9 +76,14 @@ def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
     seen_signatures: set[tuple[str, str, str]] = set()
     for result in results:
         content = _normalize_whitespace(result.content_markdown)
+        summary_sentence = _normalize_whitespace(result.summary_sentence)
+        source_excerpt = _normalize_whitespace(result.source_excerpt)
+        why_it_matters = _normalize_whitespace(result.why_it_matters)
         if not content:
             continue
         if _word_count(content) > _MAX_NOTE_WORDS:
+            continue
+        if not summary_sentence or not source_excerpt or not why_it_matters:
             continue
         if result.kind == "reflection" and _looks_like_generic_reflection(content):
             continue
@@ -91,6 +99,9 @@ def _filter_note_results(results: list[NoteResult]) -> list[NoteResult]:
                 title=title,
                 content_markdown=content,
                 kind=result.kind,
+                summary_sentence=summary_sentence,
+                source_excerpt=source_excerpt,
+                why_it_matters=why_it_matters,
             )
         )
     return filtered
@@ -209,7 +220,16 @@ class OpenAICompatibleNoteProvider:
             kind = item.get("kind", "general")
             title = str(item.get("title", "Untitled"))[:255]
             content = str(item.get("content_markdown", ""))
-            results.append(NoteResult(title=title, content_markdown=content, kind=kind))
+            results.append(
+                NoteResult(
+                    title=title,
+                    content_markdown=content,
+                    kind=kind,
+                    summary_sentence=str(item.get("summary_sentence", "")),
+                    source_excerpt=str(item.get("source_excerpt", "")),
+                    why_it_matters=str(item.get("why_it_matters", "")),
+                )
+            )
 
         return _filter_note_results(results)
 
@@ -240,6 +260,9 @@ class StubNoteProvider:
             NoteResult(
                 kind="insight",
                 title="Schlüsselerkenntnis aus dem Inhalt",
+                summary_sentence=first,
+                source_excerpt=first,
+                why_it_matters="Sie macht die Kernidee des Inhalts schnell wieder auffindbar.",
                 content_markdown=(
                     f"Zentrale Erkenntnis: {first}. "
                     "Der Inhalt macht deutlich, dass daraus ein konkreter Blick "
@@ -249,6 +272,9 @@ class StubNoteProvider:
             NoteResult(
                 kind="action",
                 title="Konkrete Handlungsempfehlung",
+                summary_sentence="Pruefe eine eigene Ueberzeugung an einem kleinen Gegenbeispiel.",
+                source_excerpt=second[:160],
+                why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
                 content_markdown=(
                     "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem "
                     "Inhalt, die du bei dir wiedererkennst. "
@@ -259,6 +285,14 @@ class StubNoteProvider:
             NoteResult(
                 kind="reflection",
                 title="Reflexionsfrage",
+                summary_sentence=(
+                    "Die Notiz oeffnet eine Spannung zwischen Sicherheit und Klarheit."
+                ),
+                source_excerpt=third[:160],
+                why_it_matters=(
+                    "Sie hilft, starre Annahmen als konkrete Entscheidungssituation "
+                    "zu sehen."
+                ),
                 content_markdown=(
                     f"Wo erzeugt die Haltung '{third[:90]}' in deinem Alltag eher "
                     "Sicherheit als Klarheit? "

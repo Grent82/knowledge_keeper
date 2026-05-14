@@ -40,6 +40,9 @@ def test_stub_note_provider_returns_concise_distilled_artifacts():
     assert all(len(note.content_markdown.split()) <= 40 for note in notes)
     assert all("Welche Aussage aus dem Inhalt" not in note.content_markdown for note in notes)
     assert all("zum Beispiel:" not in note.content_markdown for note in notes)
+    assert all(note.summary_sentence for note in notes)
+    assert all(note.source_excerpt for note in notes)
+    assert all(note.why_it_matters for note in notes)
 
 
 def test_filter_note_results_drops_transcript_like_and_generic_notes():
@@ -49,6 +52,9 @@ def test_filter_note_results_drops_transcript_like_and_generic_notes():
                 title="Schwaecher Insight",
                 kind="insight",
                 content_markdown=" ".join(["rohtext"] * 80),
+                summary_sentence="Rohtext",
+                source_excerpt="Rohtext",
+                why_it_matters="Zu lang und unbrauchbar.",
             ),
             NoteResult(
                 title="Generische Reflexion",
@@ -57,6 +63,9 @@ def test_filter_note_results_drops_transcript_like_and_generic_notes():
                     "Welche Aussage aus dem Inhalt trifft dich am meisten "
                     "und was bedeutet sie fuer dein Denken?"
                 ),
+                summary_sentence="Eine generische Frage.",
+                source_excerpt="Kurze Passage",
+                why_it_matters="Sollte wegen generischer Form wegfallen.",
             ),
             NoteResult(
                 title="Brauchbare Handlung",
@@ -65,6 +74,9 @@ def test_filter_note_results_drops_transcript_like_and_generic_notes():
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
                     "und pruefe einen Gegenentwurf."
                 ),
+                summary_sentence="Pruefe eine Ueberzeugung.",
+                source_excerpt="Ueberzeugung im Alltag",
+                why_it_matters="Macht die Idee praktisch pruefbar.",
             ),
         ]
     )
@@ -104,6 +116,9 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
                     "und pruefe einen Gegenentwurf."
                 ),
+                summary_sentence="Pruefe eine Ueberzeugung.",
+                source_excerpt="Ueberzeugung im Alltag",
+                why_it_matters="Macht die Idee praktisch pruefbar.",
             ),
             NoteResult(
                 title="Glaubenssatz pruefen",
@@ -112,6 +127,9 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                     "Notiere heute eine Ueberzeugung, die dir im Alltag Widerstand erzeugt, "
                     "und pruefe einen Gegenentwurf."
                 ),
+                summary_sentence="Pruefe eine Ueberzeugung.",
+                source_excerpt="Ueberzeugung im Alltag",
+                why_it_matters="Macht die Idee praktisch pruefbar.",
             ),
             NoteResult(
                 title="Lernritual einplanen",
@@ -119,6 +137,9 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
                 content_markdown=(
                     "Plane fuer morgen ein kurzes Wiederholungsritual mit fester Uhrzeit ein."
                 ),
+                summary_sentence="Plane ein Lernritual.",
+                source_excerpt="Kurzes Wiederholungsritual",
+                why_it_matters="Verankert Lernen im Alltag.",
             ),
         ]
     )

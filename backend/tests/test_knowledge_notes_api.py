@@ -20,14 +20,27 @@ def test_owner_can_crud_knowledge_note():
 
     create_response = client.post(
         "/api/knowledge-notes/",
-        {"title": "First note", "content_markdown": "# Hello", "linked_notes": []},
+        {
+            "title": "First note",
+            "content_markdown": "# Hello",
+            "summary_sentence": "Kurzfassung",
+            "source_excerpt": "Originalstelle",
+            "why_it_matters": "Darum ist es wichtig",
+            "linked_notes": [],
+        },
         format="json",
     )
     note_id = create_response.data["id"]
     list_response = client.get("/api/knowledge-notes/")
     update_response = client.patch(
         f"/api/knowledge-notes/{note_id}",
-        {"title": "Updated note", "content_markdown": "Updated body"},
+        {
+            "title": "Updated note",
+            "content_markdown": "Updated body",
+            "summary_sentence": "Neue Kurzfassung",
+            "source_excerpt": "Neue Quelle",
+            "why_it_matters": "Neue Relevanz",
+        },
         format="json",
     )
     delete_response = client.delete(f"/api/knowledge-notes/{note_id}")
@@ -38,6 +51,9 @@ def test_owner_can_crud_knowledge_note():
     assert [entry["id"] for entry in list_response.data] == [note_id]
     assert update_response.status_code == 200
     assert update_response.data["title"] == "Updated note"
+    assert update_response.data["summary_sentence"] == "Neue Kurzfassung"
+    assert update_response.data["source_excerpt"] == "Neue Quelle"
+    assert update_response.data["why_it_matters"] == "Neue Relevanz"
     assert delete_response.status_code == 204
     assert not KnowledgeNote.objects.filter(id=note_id).exists()
 
