@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /**
  * Encapsulates the KnowledgeNoteList + KnowledgeNoteEditor panel pair.
@@ -12,7 +12,13 @@ export class KnowledgeNotesPage {
   // ── List ──────────────────────────────────────────────────────────────────
 
   noteList() {
-    return this.page.locator("article.card").filter({ has: this.page.getByRole("heading", { name: "Wissensnotizen" }) });
+    return this.page.locator("article.card").filter({
+      has: this.page.getByRole("heading", { name: "Wissensnotizen" }),
+    });
+  }
+
+  filterInput() {
+    return this.page.getByLabel("Notizen durchsuchen");
   }
 
   emptyStateMessage() {
@@ -24,8 +30,12 @@ export class KnowledgeNotesPage {
     return this.noteList().locator(".simple-list .list-button");
   }
 
+  kindBadge(noteButton: Locator) {
+    return noteButton.locator(".tag").first();
+  }
+
   async openNoteByTitle(title: string) {
-    await this.page.getByRole("button", { name: title }).click();
+    await this.noteItems().filter({ hasText: title }).first().click();
   }
 
   async clickNewNote() {
@@ -40,6 +50,28 @@ export class KnowledgeNotesPage {
 
   editorTitleInput() {
     return this.page.getByLabel(/Titel/i);
+  }
+
+  kindSelect() {
+    return this.page.getByLabel("Typ");
+  }
+
+  linkSection() {
+    return this.page.locator(".field").filter({
+      has: this.page.getByText("Verlinkte Notizen", { exact: true }),
+    });
+  }
+
+  linkPicker() {
+    return this.page.getByLabel("Notiz zum Verlinken auswählen");
+  }
+
+  addLinkButton() {
+    return this.page.getByRole("button", { name: "Verlinkung hinzufügen" });
+  }
+
+  linkedChips() {
+    return this.page.locator(".note-chip");
   }
 
   async waitForEditorOpen() {

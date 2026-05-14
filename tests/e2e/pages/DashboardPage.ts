@@ -26,4 +26,12 @@ export class DashboardPage {
   newNoteButton() {
     return this.page.getByRole("button", { name: "Neue Notiz" });
   }
+
+  graphPanel() {
+    return this.page.locator("article.knowledge-graph-panel");
+  }
+
+  graphNodes() {
+    return this.page.locator(".react-flow__node");
+  }
 }
