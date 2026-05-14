@@ -43,10 +43,12 @@ class CoachChatView(APIView):
         serializer.is_valid(raise_exception=True)
 
         question = serializer.validated_data["question"]
+        context_tag = serializer.validated_data.get("context_tag", "")
         history = serializer.validated_data.get("history", [])
 
-        cited_segments = retrieve_segments(question, owner=request.user, limit=5)
-        relevant_notes = _retrieve_relevant_notes(question, owner=request.user)
+        retrieval_query = f"{question} {context_tag}".strip() if context_tag else question
+        cited_segments = retrieve_segments(retrieval_query, owner=request.user, limit=5)
+        relevant_notes = _retrieve_relevant_notes(retrieval_query, owner=request.user)
         coach_answer = get_chat_provider().generate_answer(
             question=question,
             history=history,
@@ -58,6 +60,7 @@ class CoachChatView(APIView):
                 "answer": coach_answer.answer,
                 "response_mode": coach_answer.mode,
                 "source_semantics": "related_sources",
+                "context_tag": context_tag,
                 "cited_segments": [
                     {
                         "segment_id": segment.segment_id,

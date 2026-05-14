@@ -8,6 +8,7 @@ class HistoryEntrySerializer(serializers.Serializer):
 
 class CoachChatRequestSerializer(serializers.Serializer):
     question = serializers.CharField(allow_blank=False, trim_whitespace=True)
+    context_tag = serializers.CharField(required=False, allow_blank=True, default="")
     history = HistoryEntrySerializer(many=True, required=False)
 
     def validate_question(self, value: str) -> str:

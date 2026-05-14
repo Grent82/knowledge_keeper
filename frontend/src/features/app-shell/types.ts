@@ -155,5 +155,6 @@ export type CoachChatResponse = {
   answer: string;
   response_mode: "grounded_answer" | "sources_only";
   source_semantics: "related_sources";
+  context_tag: string;
   cited_segments: CoachCitedSegment[];
 };

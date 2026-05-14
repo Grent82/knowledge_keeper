@@ -13,6 +13,7 @@ describe("postCoachQuestion", () => {
           answer: "Arbeite in klaren Fokusbloecken.",
           response_mode: "grounded_answer",
           source_semantics: "related_sources",
+          context_tag: "kontext:Konflikt",
           cited_segments: [
             {
               segment_id: 1,
@@ -31,20 +32,28 @@ describe("postCoachQuestion", () => {
       configurable: true,
     });
 
-    const result = await postCoachQuestion("Wie lerne ich fokussierter?", [
-      { role: "user", content: "Ich schweife oft ab." },
-    ]);
+    const result = await postCoachQuestion(
+      "Wie lerne ich fokussierter?",
+      [{ role: "user", content: "Ich schweife oft ab." }],
+      "kontext:Konflikt",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/coach/chat/",
       expect.objectContaining({
         method: "POST",
         credentials: "include",
+        body: JSON.stringify({
+          question: "Wie lerne ich fokussierter?",
+          history: [{ role: "user", content: "Ich schweife oft ab." }],
+          context_tag: "kontext:Konflikt",
+        }),
       }),
     );
     expect(result.answer).toContain("Fokus");
     expect(result.response_mode).toBe("grounded_answer");
     expect(result.source_semantics).toBe("related_sources");
+    expect(result.context_tag).toBe("kontext:Konflikt");
     expect(result.cited_segments).toHaveLength(1);
   });
 });

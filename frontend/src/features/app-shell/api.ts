@@ -98,10 +98,14 @@ export function fetchSession() {
   return request<SessionState>("/api/auth/session");
 }
 
-export function postCoachQuestion(question: string, history: CoachHistoryEntry[]) {
+export function postCoachQuestion(
+  question: string,
+  history: CoachHistoryEntry[],
+  contextTag = "",
+) {
   return request<CoachChatResponse>("/api/coach/chat/", {
     method: "POST",
-    body: JSON.stringify({ question, history }),
+    body: JSON.stringify({ question, history, context_tag: contextTag }),
   });
 }
 

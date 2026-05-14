@@ -804,6 +804,21 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.tag-filter-bar {
+  margin-top: 0.75rem;
+}
+
+.tag-filter-chip {
+  background: rgba(23, 32, 42, 0.08);
+  color: #17202a;
+  padding: 0.45rem 0.85rem;
+}
+
+.tag-filter-chip.active {
+  background: #9b5d2e;
+  color: #fffdf8;
+}
+
 .transformation-section {
   border-top: 1px solid var(--border-color, #e5e7eb);
   padding-top: 1rem;

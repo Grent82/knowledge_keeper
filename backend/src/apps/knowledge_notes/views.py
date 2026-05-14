@@ -10,6 +10,7 @@ from rest_framework.viewsets import ModelViewSet
 from apps.common.permissions import IsOwnerRole
 from apps.playback.models import ArtifactStatus, Transcript
 
+from .context_tags import CONTEXT_TAGS
 from .models import KnowledgeNote
 from .providers import get_embedding_provider
 from .serializers import KnowledgeNoteSerializer
@@ -43,15 +44,22 @@ class KnowledgeNoteViewSet(ModelViewSet):
             scored.sort(key=lambda item: -item[1])
             top_ids = [note.id for note, score in scored[:10] if score > 0.0]
             if not top_ids:
-                return queryset.none()
-            ordering = Case(
-                *[When(id=pk, then=pos) for pos, pk in enumerate(top_ids)],
-                output_field=IntegerField(),
-            )
-            return queryset.filter(id__in=top_ids).order_by(ordering)
-        if q:
+                queryset = queryset.none()
+            else:
+                ordering = Case(
+                    *[When(id=pk, then=pos) for pos, pk in enumerate(top_ids)],
+                    output_field=IntegerField(),
+                )
+                queryset = queryset.filter(id__in=top_ids).order_by(ordering)
+        elif q:
             queryset = queryset.filter(
                 models.Q(title__icontains=q) | models.Q(content_markdown__icontains=q)
+            )
+        tag = self.request.query_params.get("tag", "").strip()
+        if tag:
+            all_qs = list(queryset)
+            queryset = queryset.filter(
+                id__in=[note.id for note in all_qs if tag in (note.context_tags or [])]
             )
         return queryset
 
@@ -62,6 +70,13 @@ class KnowledgeNoteViewSet(ModelViewSet):
     def perform_update(self, serializer):
         note = serializer.save()
         update_note_embedding.delay(note.id)
+
+
+class ContextTagsView(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerRole]
+
+    def get(self, request: Request) -> Response:
+        return Response(CONTEXT_TAGS)
 
 
 class TriggerKnowledgeNoteGenerationView(APIView):

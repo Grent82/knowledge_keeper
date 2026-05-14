@@ -2,6 +2,7 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { ApiError, postCoachQuestion } from "./api";
+import { CONTEXT_TAGS } from "./contextTags";
 import type { CoachCitedSegment, CoachHistoryEntry } from "./types";
 
 type CoachMessage = {
@@ -33,6 +34,7 @@ function formatTimestamp(value: string | null): string | null {
 
 export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
   const [draft, setDraft] = useState("");
+  const [contextTag, setContextTag] = useState("");
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
     setError("");
 
     try {
-      const response = await postCoachQuestion(question, history);
+      const response = await postCoachQuestion(question, history, contextTag);
       setMessages((currentMessages) => [
         ...currentMessages,
         { role: "user", content: question },
@@ -92,6 +94,19 @@ export function CoachPanel({ mediaTitleById }: CoachPanelProps) {
       </p>
 
       <form className="stack-form" onSubmit={(event) => void handleSubmit(event)}>
+        <label className="field" style={{ marginBottom: "0.5rem" }}>
+          <span className="muted" style={{ fontSize: "0.8rem" }}>
+            Meine aktuelle Situation (optional)
+          </span>
+          <select value={contextTag} onChange={(event) => setContextTag(event.target.value)}>
+            <option value="">Kein Kontext gewählt</option>
+            {CONTEXT_TAGS.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag.replace("kontext:", "")}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="field">
           <span>Frage</span>
           <textarea

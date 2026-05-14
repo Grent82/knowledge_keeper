@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { KnowledgeNote } from "./types";
+import { CONTEXT_TAGS } from "./contextTags";
 import { formatKnowledgeNoteKind, formatKnowledgeNoteTitle } from "./knowledgeNotePresentation";
+import type { KnowledgeNote } from "./types";
 
 type KnowledgeNoteListProps = {
   notes: KnowledgeNote[];
@@ -14,22 +15,32 @@ function formatUpdatedAt(value: string): string {
 }
 
 export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteListProps) {
-  const [query, setQuery] = useState("");
+  const [filterText, setFilterText] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const availableTags = useMemo(() => {
+    const usedTags = new Set(notes.flatMap((note) => note.context_tags ?? []));
+    const orderedKnownTags = CONTEXT_TAGS.filter((tag) => usedTags.has(tag));
+    const additionalTags = [...usedTags].filter((tag) => !CONTEXT_TAGS.includes(tag));
+    return [...orderedKnownTags, ...additionalTags];
+  }, [notes]);
+
   const filteredNotes = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase();
-    if (!normalizedQuery) {
-      return notes;
-    }
+    const normalizedFilterText = filterText.trim().toLocaleLowerCase();
 
     return notes.filter((note) => {
-      const title = formatKnowledgeNoteTitle(note.title).toLocaleLowerCase();
-      const content = note.content_markdown.toLocaleLowerCase();
-      return title.includes(normalizedQuery) || content.includes(normalizedQuery);
+      const matchesText =
+        !normalizedFilterText ||
+        formatKnowledgeNoteTitle(note.title).toLocaleLowerCase().includes(normalizedFilterText) ||
+        (note.content_markdown ?? "").toLocaleLowerCase().includes(normalizedFilterText);
+      const matchesTag = !activeTag || (note.context_tags ?? []).includes(activeTag);
+      return matchesText && matchesTag;
     });
-  }, [notes, query]);
+  }, [activeTag, filterText, notes]);
 
   useEffect(() => {
-    setQuery("");
+    setFilterText("");
+    setActiveTag(null);
   }, [notes]);
 
   return (
@@ -47,13 +58,34 @@ export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteLi
         <p className="empty-state">Noch keine Wissensnotizen vorhanden.</p>
       ) : (
         <>
+          {availableTags.length > 0 ? (
+            <div className="note-chip-list tag-filter-bar">
+              <button
+                className={`tag-filter-chip${activeTag === null ? " active" : ""}`}
+                onClick={() => setActiveTag(null)}
+                type="button"
+              >
+                Alle
+              </button>
+              {availableTags.map((tag) => (
+                <button
+                  className={`tag-filter-chip${activeTag === tag ? " active" : ""}`}
+                  key={tag}
+                  onClick={() => setActiveTag((currentTag) => (currentTag === tag ? null : tag))}
+                  type="button"
+                >
+                  {tag.replace("kontext:", "")}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <input
             aria-label="Notizen durchsuchen"
             className="search-input"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => setFilterText(event.target.value)}
             placeholder="Notizen durchsuchen…"
             type="search"
-            value={query}
+            value={filterText}
           />
           {filteredNotes.length === 0 ? (
             <p className="empty-state">Keine Notizen gefunden.</p>
