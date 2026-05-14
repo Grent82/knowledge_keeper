@@ -66,6 +66,28 @@ export function KnowledgeNoteList({ notes, onSelect, onCreate }: KnowledgeNoteLi
                       <strong>{formatKnowledgeNoteTitle(note.title)}</strong>
                       <span className="tag">{formatKnowledgeNoteKind(note.kind)}</span>
                     </span>
+                    {note.core_insight ? (
+                      <span className="note-subtitle muted">
+                        {note.core_insight.length > 80
+                          ? `${note.core_insight.slice(0, 80)}…`
+                          : note.core_insight}
+                      </span>
+                    ) : null}
+                    {note.first_step ? (
+                      <span className="note-action-badge">▶ Schritt vorhanden</span>
+                    ) : null}
+                    {note.context_tags && note.context_tags.length > 0 ? (
+                      <span className="note-chip-list compact">
+                        {note.context_tags.slice(0, 3).map((tag) => (
+                          <span className="note-chip tag small" key={tag}>
+                            {tag.replace("kontext:", "")}
+                          </span>
+                        ))}
+                        {note.context_tags.length > 3 ? (
+                          <span className="note-chip tag small muted">+{note.context_tags.length - 3}</span>
+                        ) : null}
+                      </span>
+                    ) : null}
                     <span className="muted">Aktualisiert: {formatUpdatedAt(note.updated_at)}</span>
                   </button>
                 </li>

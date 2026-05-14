@@ -38,6 +38,14 @@ export function KnowledgeNoteEditor({
   const linkableNotes = allNotes.filter(
     (n) => n.id !== note?.id && !linkedNoteIds.includes(n.id),
   );
+  const hasTransformationFields = Boolean(
+    note?.problem ||
+      note?.core_insight ||
+      note?.application ||
+      note?.first_step ||
+      note?.deeper_principle ||
+      (note?.context_tags && note.context_tags.length > 0),
+  );
 
   useEffect(() => {
     setTitle(note ? formatKnowledgeNoteTitle(note.title) : "");
@@ -174,6 +182,59 @@ export function KnowledgeNoteEditor({
             />
           </label>
         )}
+        {hasTransformationFields ? (
+          <div className="transformation-section">
+            <h3>Transformations-Struktur</h3>
+
+            {note?.problem ? (
+              <div className="transformation-field">
+                <span className="transformation-label">⚡ Spannung / Problem</span>
+                <p>{note.problem}</p>
+              </div>
+            ) : null}
+
+            {note?.core_insight ? (
+              <div className="transformation-field">
+                <span className="transformation-label">💡 Kern-Erkenntnis</span>
+                <p className="core-insight-text">{note.core_insight}</p>
+              </div>
+            ) : null}
+
+            {note?.application ? (
+              <div className="transformation-field">
+                <span className="transformation-label">🎯 Anwendung</span>
+                <p>{note.application}</p>
+              </div>
+            ) : null}
+
+            {note?.first_step ? (
+              <div className="transformation-field first-step-field">
+                <span className="transformation-label">▶ Erster Schritt</span>
+                <p className="first-step-text">{note.first_step}</p>
+              </div>
+            ) : null}
+
+            {note?.deeper_principle ? (
+              <div className="transformation-field">
+                <span className="transformation-label">🌐 Tieferes Prinzip</span>
+                <p className="deeper-principle-text">{note.deeper_principle}</p>
+              </div>
+            ) : null}
+
+            {note?.context_tags && note.context_tags.length > 0 ? (
+              <div className="transformation-field">
+                <span className="transformation-label">🏷 Kontext</span>
+                <div className="note-chip-list">
+                  {note.context_tags.map((tag) => (
+                    <span className="note-chip tag" key={tag}>
+                      {tag.replace("kontext:", "")}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {linkedNoteIds.length > 0 || allNotes.length > 1 ? (
           <div className="field">
             <span>Verlinkte Notizen</span>
