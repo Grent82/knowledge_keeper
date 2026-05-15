@@ -49,6 +49,7 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
   const [selectedTranscriptId, setSelectedTranscriptId] = useState<number | null>(null);
+  const [transcriptBodyExpanded, setTranscriptBodyExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [segmentLoading, setSegmentLoading] = useState(false);
   const [triggerLoading, setTriggerLoading] = useState(false);
@@ -58,6 +59,9 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
   const [infoMessage, setInfoMessage] = useState("");
   const shouldShowTriggerButton =
     transcripts.length === 0 || transcripts.every((transcript) => transcript.status === "failed");
+
+  const hasSummaries = summaries.some((s) => s.status === "ready");
+  const readyTranscript = transcripts.find((t) => t.status === "ready") ?? null;
 
   const loadArtifacts = useCallback(async (cancelled: () => boolean = () => false) => {
     setLoading(true);
@@ -80,6 +84,9 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
         }
         return nextTranscripts[0]?.id ?? null;
       });
+      // Collapse transcript body when summaries are already available
+      const summariesReady = nextSummaries.some((s) => s.status === "ready");
+      setTranscriptBodyExpanded(!summariesReady);
     } catch (nextError) {
       if (!cancelled()) {
         setError(nextError instanceof Error ? nextError.message : "Artifact loading failed.");
@@ -252,6 +259,15 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
                     </button>
                   );
                 })}
+                {readyTranscript ? (
+                  <button
+                    disabled={noteGenerationLoading}
+                    onClick={() => void handleGenerateNotes(readyTranscript.id)}
+                    type="button"
+                  >
+                    {noteGenerationLoading ? "Notizen werden generiert…" : "Knowledge Notes generieren"}
+                  </button>
+                ) : null}
               </div>
             ) : null}
             {summaries.length === 0 && !loading ? (
@@ -279,10 +295,21 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
           </div>
 
           <div className="artifact-section">
-            <h3>Transcripts</h3>
+            <div className="artifact-header">
+              <h3>Transcripts</h3>
+              {hasSummaries && transcripts.length > 0 ? (
+                <button
+                  className="list-button"
+                  onClick={() => setTranscriptBodyExpanded((prev) => !prev)}
+                  type="button"
+                >
+                  {transcriptBodyExpanded ? "Transkript ausblenden" : "Transkript anzeigen"}
+                </button>
+              ) : null}
+            </div>
             {transcripts.length === 0 && !loading ? (
               <p className="empty-state">No transcripts yet.</p>
-            ) : (
+            ) : transcriptBodyExpanded ? (
               <ul className="simple-list compact-list">
                 {transcripts.map((transcript) => {
                   const isSelected = transcript.id === selectedTranscript?.id;
@@ -338,22 +365,13 @@ export function TranscriptPanel({ mediaItem }: TranscriptPanelProps) {
                               ))}
                             </ul>
                           )}
-                          <div className="artifact-actions">
-                            <button
-                              disabled={noteGenerationLoading}
-                              onClick={() => void handleGenerateNotes(transcript.id)}
-                              type="button"
-                            >
-                              {noteGenerationLoading ? "Notizen werden generiert…" : "Knowledge Notes generieren"}
-                            </button>
-                          </div>
                         </div>
                       ) : null}
                     </li>
                   );
                 })}
               </ul>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

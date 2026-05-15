@@ -16,7 +16,12 @@ class _QualifiedNoteProvider:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
 
-    def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
+    def generate(
+        self,
+        transcript_text: str,
+        language_code: str = "",
+        summaries: dict | None = None,
+    ) -> list[NoteResult]:
         self.calls.append((transcript_text, language_code))
         return [
             NoteResult(

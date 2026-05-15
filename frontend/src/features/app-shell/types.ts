@@ -118,6 +118,9 @@ export type KnowledgeNote = {
   owner: number;
   title: string;
   content_markdown: string;
+  summary_sentence?: string;
+  source_excerpt?: string;
+  why_it_matters?: string;
   problem?: string;
   core_insight?: string;
   application?: string;

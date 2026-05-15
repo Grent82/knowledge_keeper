@@ -70,7 +70,7 @@ def link_notes_by_principle(note_id: int) -> None:
 
 @shared_task(bind=True, max_retries=3)
 def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> None:
-    from apps.playback.models import ArtifactStatus, Transcript
+    from apps.playback.models import ArtifactStatus, Summary, Transcript
 
     from .models import KnowledgeNote, NoteKind
     from .providers.openai_compatible import get_note_provider
@@ -101,6 +101,15 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
         logger.warning("Transcript %s has no content — aborting note generation", transcript_id)
         return
 
+    ready_summaries = Summary.objects.filter(
+        media_item=media_item, status=ArtifactStatus.READY
+    ).values("kind", "markdown_content", "content")
+    summaries: dict[str, str] = {}
+    for row in ready_summaries:
+        body = (row["markdown_content"] or row["content"]).strip()
+        if body:
+            summaries[row["kind"]] = body
+
     try:
         provider = get_note_provider()
         gate = get_substance_gate_provider()
@@ -130,7 +139,11 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
             return
 
         qualified_text = "\n\n".join(qualified_chunks)
-        results = provider.generate(qualified_text, language_code=transcript.language_code)
+        results = provider.generate(
+            qualified_text,
+            language_code=transcript.language_code,
+            summaries=summaries or None,
+        )
     except Exception as exc:
         logger.error("Note generation failed for transcript %s: %s", transcript_id, exc)
         raise self.retry(exc=exc, countdown=60) from exc

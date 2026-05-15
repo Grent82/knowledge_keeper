@@ -19,7 +19,12 @@ class NoteResult:
 
 
 class KnowledgeNoteProvider(Protocol):
-    def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]: ...
+    def generate(
+        self,
+        transcript_text: str,
+        language_code: str = "",
+        summaries: dict[str, str] | None = None,
+    ) -> list[NoteResult]: ...
 
 
 class EmbeddingProvider(Protocol):

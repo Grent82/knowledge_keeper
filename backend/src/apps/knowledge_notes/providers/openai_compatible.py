@@ -40,8 +40,16 @@ _ICH_FORM_PREFIXES = (
     "i'",
 )
 
+_SUMMARIES_SECTION_TEMPLATE = (
+    "KONTEXT — Zusammenfassungen (nur zur Themen-Orientierung, NICHT als Quelle zitieren):\n"
+    "{summaries_block}\n\n"
+)
+
 _USER_PROMPT_TEMPLATE = (
+    "{summaries_section}"
     "Analysiere das folgende Transkript. "
+    "Nutze die Zusammenfassungen oben als Orientierung für wichtige Themen, "
+    "wähle aber deine Ankerstellen und Zitate ausschließlich aus dem Transkript-Text unten.\n"
     "Identifiziere 3-6 Passagen mit echtem Transformations-Potenzial.\n\n"
     "WICHTIG: Überspringe flache, generische oder rein beschreibende Aussagen. "
     "Qualität vor Quantität.\n"
@@ -81,9 +89,10 @@ _USER_PROMPT_TEMPLATE = (
     "- first_step MUSS mit einem Verb im Imperativ beginnen "
     "(z.B. \"Schreibe...\", \"Frage...\", \"Beobachte...\")\n"
     "- problem MUSS ausgefüllt sein — keine Erkenntnis ohne Spannung\n"
+    "- source_excerpt MUSS aus dem Transkript-Text unten stammen, NICHT aus den Zusammenfassungen\n"
     "- Schreibe in der Sprache des Transkripts\n"
     "- Gib NUR das JSON-Array zurück, keine Erklärungen, kein Markdown-Wrapper\n\n"
-    "Transkript:\n"
+    "Transkript (Primärquelle für Ankerstellen und Zitate):\n"
     "{transcript}\n"
 )
 
@@ -226,6 +235,30 @@ def _build_transcript_sections(
     ]
 
 
+_SUMMARY_KIND_LABELS: dict[str, str] = {
+    "short": "Kurzzusammenfassung",
+    "detailed": "Detailzusammenfassung",
+    "bullet": "Bullet-Zusammenfassung",
+}
+
+
+def _build_summaries_section(summaries: dict[str, str]) -> str:
+    if not summaries:
+        return ""
+    lines: list[str] = []
+    for kind in ("short", "detailed", "bullet"):
+        if kind in summaries:
+            label = _SUMMARY_KIND_LABELS.get(kind, kind)
+            lines.append(f"[{label}]\n{summaries[kind][:1500]}")
+    for kind, body in summaries.items():
+        if kind not in ("short", "detailed", "bullet"):
+            lines.append(f"[{kind}]\n{body[:1500]}")
+    if not lines:
+        return ""
+    block = "\n\n".join(lines)
+    return _SUMMARIES_SECTION_TEMPLATE.format(summaries_block=block)
+
+
 def _build_prompt_context(transcript_text: str) -> str:
     sections = _build_transcript_sections(transcript_text)
     if not sections:
@@ -243,8 +276,17 @@ class OpenAICompatibleNoteProvider:
         self.client = OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
 
-    def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
-        prompt = _USER_PROMPT_TEMPLATE.format(transcript=_build_prompt_context(transcript_text))
+    def generate(
+        self,
+        transcript_text: str,
+        language_code: str = "",
+        summaries: dict[str, str] | None = None,
+    ) -> list[NoteResult]:
+        summaries_section = _build_summaries_section(summaries) if summaries else ""
+        prompt = _USER_PROMPT_TEMPLATE.format(
+            summaries_section=summaries_section,
+            transcript=_build_prompt_context(transcript_text),
+        )
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -299,7 +341,12 @@ class OpenAICompatibleNoteProvider:
 class StubNoteProvider:
     """Returns deterministic stub notes for local development without an AI backend."""
 
-    def generate(self, transcript_text: str, language_code: str = "") -> list[NoteResult]:
+    def generate(
+        self,
+        transcript_text: str,
+        language_code: str = "",
+        summaries: dict[str, str] | None = None,
+    ) -> list[NoteResult]:
         sections = _build_transcript_sections(transcript_text, max_sections=3)
         focus_sentences = [section["focus_sentence"] for section in sections]
         first = (

@@ -1,6 +1,7 @@
 from apps.knowledge_notes.ports import NoteResult
 from apps.knowledge_notes.providers.openai_compatible import (
     StubNoteProvider,
+    _build_summaries_section,
     _build_transcript_sections,
     _filter_note_results,
 )
@@ -157,3 +158,29 @@ def test_filter_note_results_deduplicates_near_duplicate_candidates():
         "Ich pruefe meinen Glaubenssatz",
         "Ich plane mein Lernritual",
     ]
+
+
+def test_build_summaries_section_includes_all_ready_kinds():
+    section = _build_summaries_section({
+        "short": "Klarheit entsteht durch Reduktion.",
+        "bullet": "- Fokus\n- Reduktion",
+        "detailed": "Eine ausfuehrliche Erklaerung.",
+    })
+
+    assert "Kurzzusammenfassung" in section
+    assert "Bullet-Zusammenfassung" in section
+    assert "Detailzusammenfassung" in section
+    assert "Klarheit entsteht durch Reduktion." in section
+    assert "NICHT als Quelle zitieren" in section
+
+
+def test_build_summaries_section_returns_empty_string_for_empty_input():
+    assert _build_summaries_section({}) == ""
+
+
+def test_stub_note_provider_accepts_summaries_without_error():
+    notes = StubNoteProvider().generate(
+        "Wiederholung hilft beim Lernen.",
+        summaries={"short": "Lernen gelingt durch regelmaessige Wiederholung."},
+    )
+    assert notes
