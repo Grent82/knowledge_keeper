@@ -29,11 +29,14 @@ def test_stub_note_provider_does_not_emit_developer_instructions_or_placeholder_
 
 
 def test_stub_note_provider_returns_concise_distilled_artifacts():
+    # Five sentences → three two-sentence chunks → three sections → three notes
     notes = StubNoteProvider().generate(
         (
             "Wir glauben oft, dass wir uns anstrengen muessen, um voranzukommen. "
             "Starre Ueberzeugungen machen das Leben enger und anstrengender. "
-            "Wer sie lockert, gewinnt mehr Handlungsspielraum."
+            "Wer sie lockert, gewinnt mehr Handlungsspielraum. "
+            "Klarheit entsteht oft durch Vereinfachung statt durch Komplexitaet. "
+            "Kleine Schritte erzeugen mehr Veraenderung als grosse Vorsa etze."
         )
     )
 

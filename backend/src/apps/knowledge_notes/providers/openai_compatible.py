@@ -354,32 +354,20 @@ class StubNoteProvider:
     ) -> list[NoteResult]:
         sections = _build_transcript_sections(transcript_text, max_sections=3)
         focus_sentences = [section["focus_sentence"] for section in sections]
-        first = (
-            focus_sentences[0]
-            if focus_sentences
-            else "Der Inhalt enthaelt mehrere anschlussfaehige Gedanken."
-        )
-        second = (
-            focus_sentences[1]
-            if len(focus_sentences) > 1
-            else "Ein naechster Schritt koennte sein, die zentrale Aussage bewusst zu notieren."
-        )
-        third = (
-            focus_sentences[2]
-            if len(focus_sentences) > 2
-            else "Mehr Spielraum entsteht oft dort, wo feste Annahmen geprueft werden."
-        )
 
+        if not focus_sentences:
+            return []
+
+        results: list[NoteResult] = []
+
+        first = focus_sentences[0]
         insight_title = f"Ich erkenne: {_stub_title_suffix(first)}"[:80]
-        action_title = f"Ich pruefe: {_stub_title_suffix(second)}"[:80]
-        reflection_title = f"Mir wird klar: {_stub_title_suffix(third)}"[:80]
-
-        results = [
+        results.append(
             NoteResult(
                 kind="insight",
                 title=insight_title,
-                summary_sentence=first,
-                source_excerpt=first,
+                summary_sentence=first[:160],
+                source_excerpt=first[:160],
                 why_it_matters="Sie macht die Kernidee des Inhalts schnell wieder auffindbar.",
                 problem="Ich bleibe in alten Mustern stecken und uebersehe neue Optionen.",
                 core_insight=(
@@ -397,77 +385,87 @@ class StubNoteProvider:
                 ),
                 context_tags=["kontext:Selbstbild"],
                 content_markdown=(
-                    f"{first}. Diese Einsicht lohnt sich erst, wenn ich daraus einen anderen "
-                    "Blick auf mein eigenes Verhalten ableite."
+                    f"{first[:120]}. Diese Einsicht lohnt sich erst, wenn ich daraus einen "
+                    "anderen Blick auf mein eigenes Verhalten ableite."
                 ),
-            ),
-            NoteResult(
-                kind="action",
-                title=action_title,
-                summary_sentence="Pruefe eine eigene Ueberzeugung an einem kleinen Gegenbeispiel.",
-                source_excerpt=second[:160],
-                why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
-                problem=(
-                    "Ich wiederhole Gewohnheiten, obwohl sie mir schon lange nicht "
-                    "mehr helfen."
-                ),
-                core_insight=(
-                    "Ich verstehe, dass eine kleine Gegenprobe oft mehr klaert als "
-                    "langes Nachdenken."
-                ),
-                application=(
-                    "Wenn ich bei einer Routine Widerstand spuere, teste ich bewusst "
-                    "eine kleine Abweichung."
-                ),
-                first_step="Notiere heute eine Gewohnheit und teste eine kleine Abweichung.",
-                deeper_principle=(
-                    "Verhaltensaenderung beginnt oft mit kleinen Experimenten statt "
-                    "mit grossen Beschluessen."
-                ),
-                context_tags=["kontext:Gewohnheit", "kontext:Arbeit"],
-                content_markdown=(
-                    "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem Inhalt, "
-                    "die du bei dir wiedererkennst. "
-                    f"Pruefe anschliessend mit '{second[:80]}' einen kleinen "
-                    "Gegenentwurf fuer die naechste konkrete Situation."
-                ),
-            ),
-            NoteResult(
-                kind="reflection",
-                title=reflection_title,
-                summary_sentence=(
-                    "Die Notiz oeffnet eine Spannung zwischen Sicherheit und Klarheit."
-                ),
-                source_excerpt=third[:160],
-                why_it_matters=(
-                    "Sie hilft, starre Annahmen als konkrete Entscheidungssituation zu sehen."
-                ),
-                problem=(
-                    "Ich halte an Sicherheiten fest, obwohl sie mich innerlich eng "
-                    "machen."
-                ),
-                core_insight=(
-                    "Mir wird klar, dass Sicherheit ohne Pruefung leicht zu neuer "
-                    "Enge fuehrt."
-                ),
-                application=(
-                    "Wenn ich mich vor einem Gespraech zurueckziehe, achte ich auf "
-                    "das Gefuehl von Enge im Koerper."
-                ),
-                first_step="Beobachte heute eine Situation, in der du Klarheit vermeidest.",
-                deeper_principle=(
-                    "Wachstum beginnt oft dort, wo ich Sicherheit nicht mit Wahrheit "
-                    "verwechsle."
-                ),
-                context_tags=["kontext:Konflikt"],
-                content_markdown=(
-                    f"Wo erzeugt die Haltung '{third[:90]}' in deinem Alltag eher "
-                    "Sicherheit als Klarheit? "
-                    "Was wuerde sich veraendern, wenn du diese Annahme probeweise "
-                    "lockerst?"
-                ),
-            ),
-        ]
+            )
+        )
+
+        if len(focus_sentences) > 1:
+            second = focus_sentences[1]
+            action_title = f"Ich pruefe: {_stub_title_suffix(second)}"[:80]
+            results.append(
+                NoteResult(
+                    kind="action",
+                    title=action_title,
+                    summary_sentence=second[:160],
+                    source_excerpt=second[:160],
+                    why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
+                    problem=(
+                        "Ich wiederhole Gewohnheiten, obwohl sie mir schon lange nicht "
+                        "mehr helfen."
+                    ),
+                    core_insight=(
+                        "Ich verstehe, dass eine kleine Gegenprobe oft mehr klaert als "
+                        "langes Nachdenken."
+                    ),
+                    application=(
+                        "Wenn ich bei einer Routine Widerstand spuere, teste ich bewusst "
+                        "eine kleine Abweichung."
+                    ),
+                    first_step="Notiere heute eine Gewohnheit und teste eine kleine Abweichung.",
+                    deeper_principle=(
+                        "Verhaltensaenderung beginnt oft mit kleinen Experimenten statt "
+                        "mit grossen Beschluessen."
+                    ),
+                    context_tags=["kontext:Gewohnheit", "kontext:Arbeit"],
+                    content_markdown=(
+                        "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem Inhalt, "
+                        "die du bei dir wiedererkennst. "
+                        f"Pruefe anschliessend mit '{second[:80]}' einen kleinen "
+                        "Gegenentwurf fuer die naechste konkrete Situation."
+                    ),
+                )
+            )
+
+        if len(focus_sentences) > 2:
+            third = focus_sentences[2]
+            reflection_title = f"Mir wird klar: {_stub_title_suffix(third)}"[:80]
+            results.append(
+                NoteResult(
+                    kind="reflection",
+                    title=reflection_title,
+                    summary_sentence=third[:160],
+                    source_excerpt=third[:160],
+                    why_it_matters=(
+                        "Sie hilft, starre Annahmen als konkrete Entscheidungssituation zu sehen."
+                    ),
+                    problem=(
+                        "Ich halte an Sicherheiten fest, obwohl sie mich innerlich eng "
+                        "machen."
+                    ),
+                    core_insight=(
+                        "Mir wird klar, dass Sicherheit ohne Pruefung leicht zu neuer "
+                        "Enge fuehrt."
+                    ),
+                    application=(
+                        "Wenn ich mich vor einem Gespraech zurueckziehe, achte ich auf "
+                        "das Gefuehl von Enge im Koerper."
+                    ),
+                    first_step="Beobachte heute eine Situation, in der du Klarheit vermeidest.",
+                    deeper_principle=(
+                        "Wachstum beginnt oft dort, wo ich Sicherheit nicht mit Wahrheit "
+                        "verwechsle."
+                    ),
+                    context_tags=["kontext:Konflikt"],
+                    content_markdown=(
+                        f"Wo erzeugt die Haltung '{third[:90]}' in deinem Alltag eher "
+                        "Sicherheit als Klarheit? "
+                        "Was wuerde sich veraendern, wenn du diese Annahme probeweise "
+                        "lockerst?"
+                    ),
+                )
+            )
         return _filter_note_results(results)
 
 
