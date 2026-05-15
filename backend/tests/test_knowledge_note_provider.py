@@ -1,52 +1,9 @@
 from apps.knowledge_notes.ports import NoteResult
 from apps.knowledge_notes.providers.openai_compatible import (
-    StubNoteProvider,
     _build_summaries_section,
     _build_transcript_sections,
     _filter_note_results,
 )
-
-
-def test_stub_note_provider_titles_do_not_leak_internal_marker():
-    notes = StubNoteProvider().generate("Kurzer Transcriptinhalt")
-
-    assert notes
-    assert all("[Stub]" not in note.title for note in notes)
-
-
-def test_stub_note_provider_does_not_emit_developer_instructions_or_placeholder_copy():
-    notes = StubNoteProvider().generate(
-        "Wiederholung hilft beim Lernen. Kleine Schritte geben Orientierung."
-    )
-
-    contents = [note.content_markdown for note in notes]
-    combined = "\n".join(contents)
-
-    assert "KNOWLEDGE_NOTE_PROVIDER" not in combined
-    assert "Django-Settings" not in combined
-    assert "Platzhalter-Notiz" not in combined
-    assert any("Wiederholung" in content or "Kleine Schritte" in content for content in contents)
-
-
-def test_stub_note_provider_returns_concise_distilled_artifacts():
-    # Five sentences → three two-sentence chunks → three sections → three notes
-    notes = StubNoteProvider().generate(
-        (
-            "Wir glauben oft, dass wir uns anstrengen muessen, um voranzukommen. "
-            "Starre Ueberzeugungen machen das Leben enger und anstrengender. "
-            "Wer sie lockert, gewinnt mehr Handlungsspielraum. "
-            "Klarheit entsteht oft durch Vereinfachung statt durch Komplexitaet. "
-            "Kleine Schritte erzeugen mehr Veraenderung als grosse Vorsa etze."
-        )
-    )
-
-    assert len(notes) == 3
-    assert all(len(note.content_markdown.split()) <= 40 for note in notes)
-    assert all("Welche Aussage aus dem Inhalt" not in note.content_markdown for note in notes)
-    assert all("zum Beispiel:" not in note.content_markdown for note in notes)
-    assert all(note.summary_sentence for note in notes)
-    assert all(note.source_excerpt for note in notes)
-    assert all(note.why_it_matters for note in notes)
 
 
 def test_filter_note_results_drops_transcript_like_and_generic_notes():
@@ -179,11 +136,3 @@ def test_build_summaries_section_includes_all_ready_kinds():
 
 def test_build_summaries_section_returns_empty_string_for_empty_input():
     assert _build_summaries_section({}) == ""
-
-
-def test_stub_note_provider_accepts_summaries_without_error():
-    notes = StubNoteProvider().generate(
-        "Wiederholung hilft beim Lernen.",
-        summaries={"short": "Lernen gelingt durch regelmaessige Wiederholung."},
-    )
-    assert notes

@@ -1,6 +1,8 @@
-import json
-import os
-import urllib.request
+import logging
+
+from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 _GATE_SYSTEM = (
     "Du bewertest Transkript-Abschnitte auf ihr Transformations-Potenzial. "
@@ -19,36 +21,31 @@ _GATE_USER = (
 
 
 class OpenAICompatibleSubstanceGateProvider:
-    def __init__(self) -> None:
-        self.api_url = os.getenv("NOTE_API_URL", "https://api.openai.com/v1/chat/completions")
-        self.api_key = os.getenv("NOTE_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-        self.model = os.getenv("NOTE_MODEL", "gpt-4o-mini")
+    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+        self._base_url = base_url
+        self._api_key = api_key
+        self.model = model
+        self._client: OpenAI | None = None
+
+    @property
+    def client(self) -> OpenAI:
+        if self._client is None:
+            self._client = OpenAI(base_url=self._base_url, api_key=self._api_key)
+        return self._client
 
     def assess(self, text: str) -> int:
-        payload = json.dumps(
-            {
-                "model": self.model,
-                "messages": [
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
                     {"role": "system", "content": _GATE_SYSTEM},
                     {"role": "user", "content": _GATE_USER.format(chunk=text[:1500])},
                 ],
-                "max_tokens": 5,
-                "temperature": 0,
-            }
-        ).encode()
-        req = urllib.request.Request(
-            self.api_url,
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
-        raw = data["choices"][0]["message"]["content"].strip()
-        try:
-            score = int(raw)
-            return max(0, min(10, score))
-        except ValueError:
+                max_tokens=5,
+                temperature=0,
+            )
+            raw = (response.choices[0].message.content or "").strip()
+            return max(0, min(10, int(raw)))
+        except (ValueError, Exception):
+            logger.warning("Substance gate assessment failed; defaulting to 5")
             return 5

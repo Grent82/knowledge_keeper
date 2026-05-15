@@ -11,9 +11,16 @@ from apps.playback.models import ArtifactStatus, Summary, Transcript
 pytestmark = pytest.mark.django_db
 
 
+@patch("apps.knowledge_notes.tasks.update_note_embedding.delay")
+@patch("apps.knowledge_notes.tasks.link_notes_by_principle.delay")
+@patch("apps.knowledge_notes.tasks.get_substance_gate_provider")
 @patch("apps.knowledge_notes.providers.openai_compatible.get_note_provider")
-def test_generate_knowledge_notes_persists_structured_fields(mock_get_provider):
+def test_generate_knowledge_notes_persists_structured_fields(
+    mock_get_provider, mock_get_gate, mock_link_delay, mock_embedding_delay
+):
     from apps.knowledge_notes.tasks import generate_knowledge_notes
+
+    mock_get_gate.return_value.assess.return_value = 8
 
     owner = User.objects.create_user(
         username="owner-note-task",
@@ -63,9 +70,16 @@ def test_generate_knowledge_notes_persists_structured_fields(mock_get_provider):
     assert note.context_tags == ["kontext:planung", "kontext:fokus"]
 
 
+@patch("apps.knowledge_notes.tasks.update_note_embedding.delay")
+@patch("apps.knowledge_notes.tasks.link_notes_by_principle.delay")
+@patch("apps.knowledge_notes.tasks.get_substance_gate_provider")
 @patch("apps.knowledge_notes.providers.openai_compatible.get_note_provider")
-def test_generate_knowledge_notes_passes_ready_summaries_to_provider(mock_get_provider):
+def test_generate_knowledge_notes_passes_ready_summaries_to_provider(
+    mock_get_provider, mock_get_gate, mock_link_delay, mock_embedding_delay
+):
     from apps.knowledge_notes.tasks import generate_knowledge_notes
+
+    mock_get_gate.return_value.assess.return_value = 8
 
     owner = User.objects.create_user(
         username="owner-summary-guided",

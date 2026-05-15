@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -32,7 +34,8 @@ def test_new_fields_are_optional():
     assert response.data["context_tags"] == []
 
 
-def test_new_fields_save_and_retrieve():
+@patch("apps.knowledge_notes.views.update_note_embedding.delay")
+def test_new_fields_save_and_retrieve(mock_embedding_delay):
     owner = User.objects.create_user(
         username="owner-note-transform-save",
         password="secret",

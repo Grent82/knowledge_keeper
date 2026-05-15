@@ -22,7 +22,9 @@ def _owner(username: str) -> User:
     return User.objects.create_user(username=username, password="secret", role=UserRole.OWNER)
 
 
-def test_link_notes_by_principle_links_similar_notes():
+@patch("apps.knowledge_notes.providers.get_embedding_provider")
+def test_link_notes_by_principle_links_similar_notes(mock_get_embedding_provider):
+    mock_get_embedding_provider.return_value = _ThresholdEmbeddingProvider()
     owner = _owner("principle-link-owner")
     first_note = KnowledgeNote.objects.create(
         owner=owner,
@@ -57,7 +59,9 @@ def test_link_notes_skips_empty_principle():
     assert list(candidate.linked_notes.values_list("id", flat=True)) == []
 
 
-def test_related_endpoint_returns_scored_list():
+@patch("apps.knowledge_notes.views.get_embedding_provider")
+def test_related_endpoint_returns_scored_list(mock_get_embedding_provider):
+    mock_get_embedding_provider.return_value = _ThresholdEmbeddingProvider()
     owner = _owner("related-endpoint-owner")
     note = KnowledgeNote.objects.create(
         owner=owner,

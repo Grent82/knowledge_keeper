@@ -5,7 +5,6 @@ import pytest
 from apps.accounts.models import User, UserRole
 from apps.knowledge_notes.models import KnowledgeNote
 from apps.knowledge_notes.ports import NoteResult
-from apps.knowledge_notes.providers.stub_substance_gate import StubSubstanceGateProvider
 from apps.media_library.models import MediaItem, MediaType
 from apps.playback.models import ArtifactStatus, Transcript
 
@@ -60,16 +59,6 @@ def _make_transcript(content: str) -> Transcript:
     )
 
 
-def test_stub_gate_always_returns_7() -> None:
-    assert StubSubstanceGateProvider().assess("anything") == 7
-
-
-def test_stub_gate_passes_threshold() -> None:
-    score = StubSubstanceGateProvider().assess("anything")
-
-    assert score >= 6
-
-
 @patch("apps.knowledge_notes.providers.openai_compatible.get_note_provider")
 @patch("apps.knowledge_notes.tasks.get_substance_gate_provider")
 def test_chunk_below_threshold_is_skipped(mock_get_gate, mock_get_provider) -> None:
@@ -84,9 +73,13 @@ def test_chunk_below_threshold_is_skipped(mock_get_gate, mock_get_provider) -> N
     assert not KnowledgeNote.objects.filter(transcript=transcript).exists()
 
 
+@patch("apps.knowledge_notes.tasks.update_note_embedding.delay")
+@patch("apps.knowledge_notes.tasks.link_notes_by_principle.delay")
 @patch("apps.knowledge_notes.providers.openai_compatible.get_note_provider")
 @patch("apps.knowledge_notes.tasks.get_substance_gate_provider")
-def test_chunk_above_threshold_is_processed(mock_get_gate, mock_get_provider) -> None:
+def test_chunk_above_threshold_is_processed(
+    mock_get_gate, mock_get_provider, mock_link_delay, mock_embedding_delay
+) -> None:
     from apps.knowledge_notes.tasks import generate_knowledge_notes
 
     transcript = _make_transcript(" ".join(f"wort{i}" for i in range(100)))

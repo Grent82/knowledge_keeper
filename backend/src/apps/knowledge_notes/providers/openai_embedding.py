@@ -1,24 +1,23 @@
-import json
-import os
-import urllib.request
+import logging
+
+from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 
 class OpenAICompatibleEmbeddingProvider:
-    def __init__(self) -> None:
-        self.api_url = os.getenv("EMBEDDING_API_URL", "https://api.openai.com/v1/embeddings")
-        self.api_key = os.getenv("EMBEDDING_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-        self.model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+        self._base_url = base_url
+        self._api_key = api_key
+        self.model = model
+        self._client: OpenAI | None = None
+
+    @property
+    def client(self) -> OpenAI:
+        if self._client is None:
+            self._client = OpenAI(base_url=self._base_url, api_key=self._api_key)
+        return self._client
 
     def embed_text(self, text: str) -> list[float]:
-        payload = json.dumps({"input": text, "model": self.model}).encode()
-        req = urllib.request.Request(
-            self.api_url,
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read())
-        return data["data"][0]["embedding"]
+        response = self.client.embeddings.create(input=text, model=self.model)
+        return response.data[0].embedding

@@ -273,8 +273,16 @@ def _build_prompt_context(transcript_text: str) -> str:
 
 class OpenAICompatibleNoteProvider:
     def __init__(self, base_url: str, api_key: str, model: str) -> None:
-        self.client = OpenAI(base_url=base_url, api_key=api_key)
+        self._base_url = base_url
+        self._api_key = api_key
         self.model = model
+        self._client: OpenAI | None = None
+
+    @property
+    def client(self) -> OpenAI:
+        if self._client is None:
+            self._client = OpenAI(base_url=self._base_url, api_key=self._api_key)
+        return self._client
 
     def generate(
         self,
@@ -338,147 +346,11 @@ class OpenAICompatibleNoteProvider:
         return _filter_note_results(results)
 
 
-def _stub_title_suffix(focus: str, words: int = 4) -> str:
-    """Return a short unique suffix from a focus sentence for stub note titles."""
-    return " ".join(focus.split()[:words])
-
-
-class StubNoteProvider:
-    """Returns deterministic stub notes for local development without an AI backend."""
-
-    def generate(
-        self,
-        transcript_text: str,
-        language_code: str = "",
-        summaries: dict[str, str] | None = None,
-    ) -> list[NoteResult]:
-        sections = _build_transcript_sections(transcript_text, max_sections=3)
-        focus_sentences = [section["focus_sentence"] for section in sections]
-
-        if not focus_sentences:
-            return []
-
-        results: list[NoteResult] = []
-
-        first = focus_sentences[0]
-        insight_title = f"Ich erkenne: {_stub_title_suffix(first)}"[:80]
-        results.append(
-            NoteResult(
-                kind="insight",
-                title=insight_title,
-                summary_sentence=first[:160],
-                source_excerpt=first[:160],
-                why_it_matters="Sie macht die Kernidee des Inhalts schnell wieder auffindbar.",
-                problem="Ich bleibe in alten Mustern stecken und uebersehe neue Optionen.",
-                core_insight=(
-                    "Ich erkenne, dass schon ein anderer Blick auf die Situation "
-                    "neue Optionen oeffnet."
-                ),
-                application=(
-                    "Wenn ich im Alltag inneren Druck spuere, pruefe ich zuerst "
-                    "meinen Blick auf die Lage."
-                ),
-                first_step="Notiere heute eine festgefahrene Annahme aus deinem Alltag.",
-                deeper_principle=(
-                    "Mehr Freiheit entsteht, wenn ich Deutungen pruefe statt "
-                    "reflexhaft zu verteidigen."
-                ),
-                context_tags=["kontext:Selbstbild"],
-                content_markdown=(
-                    f"{first[:120]}. Diese Einsicht lohnt sich erst, wenn ich daraus einen "
-                    "anderen Blick auf mein eigenes Verhalten ableite."
-                ),
-            )
-        )
-
-        if len(focus_sentences) > 1:
-            second = focus_sentences[1]
-            action_title = f"Ich pruefe: {_stub_title_suffix(second)}"[:80]
-            results.append(
-                NoteResult(
-                    kind="action",
-                    title=action_title,
-                    summary_sentence=second[:160],
-                    source_excerpt=second[:160],
-                    why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
-                    problem=(
-                        "Ich wiederhole Gewohnheiten, obwohl sie mir schon lange nicht "
-                        "mehr helfen."
-                    ),
-                    core_insight=(
-                        "Ich verstehe, dass eine kleine Gegenprobe oft mehr klaert als "
-                        "langes Nachdenken."
-                    ),
-                    application=(
-                        "Wenn ich bei einer Routine Widerstand spuere, teste ich bewusst "
-                        "eine kleine Abweichung."
-                    ),
-                    first_step="Notiere heute eine Gewohnheit und teste eine kleine Abweichung.",
-                    deeper_principle=(
-                        "Verhaltensaenderung beginnt oft mit kleinen Experimenten statt "
-                        "mit grossen Beschluessen."
-                    ),
-                    context_tags=["kontext:Gewohnheit", "kontext:Arbeit"],
-                    content_markdown=(
-                        "Notiere heute eine Ueberzeugung oder Gewohnheit aus dem Inhalt, "
-                        "die du bei dir wiedererkennst. "
-                        f"Pruefe anschliessend mit '{second[:80]}' einen kleinen "
-                        "Gegenentwurf fuer die naechste konkrete Situation."
-                    ),
-                )
-            )
-
-        if len(focus_sentences) > 2:
-            third = focus_sentences[2]
-            reflection_title = f"Mir wird klar: {_stub_title_suffix(third)}"[:80]
-            results.append(
-                NoteResult(
-                    kind="reflection",
-                    title=reflection_title,
-                    summary_sentence=third[:160],
-                    source_excerpt=third[:160],
-                    why_it_matters=(
-                        "Sie hilft, starre Annahmen als konkrete Entscheidungssituation zu sehen."
-                    ),
-                    problem=(
-                        "Ich halte an Sicherheiten fest, obwohl sie mich innerlich eng "
-                        "machen."
-                    ),
-                    core_insight=(
-                        "Mir wird klar, dass Sicherheit ohne Pruefung leicht zu neuer "
-                        "Enge fuehrt."
-                    ),
-                    application=(
-                        "Wenn ich mich vor einem Gespraech zurueckziehe, achte ich auf "
-                        "das Gefuehl von Enge im Koerper."
-                    ),
-                    first_step="Beobachte heute eine Situation, in der du Klarheit vermeidest.",
-                    deeper_principle=(
-                        "Wachstum beginnt oft dort, wo ich Sicherheit nicht mit Wahrheit "
-                        "verwechsle."
-                    ),
-                    context_tags=["kontext:Konflikt"],
-                    content_markdown=(
-                        f"Wo erzeugt die Haltung '{third[:90]}' in deinem Alltag eher "
-                        "Sicherheit als Klarheit? "
-                        "Was wuerde sich veraendern, wenn du diese Annahme probeweise "
-                        "lockerst?"
-                    ),
-                )
-            )
-        return _filter_note_results(results)
-
-
 def get_note_provider() -> KnowledgeNoteProvider:
     from django.conf import settings
 
-    provider = getattr(settings, "KNOWLEDGE_NOTE_PROVIDER", "stub")
-
-    if provider == "openai_compatible":
-        return OpenAICompatibleNoteProvider(
-            base_url=settings.AI_HUB_BASE_URL,
-            api_key=settings.AI_HUB_API_KEY,
-            model=settings.AI_HUB_MODEL,
-        )
-
-    return StubNoteProvider()
+    return OpenAICompatibleNoteProvider(
+        base_url=settings.AI_HUB_BASE_URL,
+        api_key=settings.AI_HUB_API_KEY,
+        model=settings.AI_HUB_MODEL,
+    )

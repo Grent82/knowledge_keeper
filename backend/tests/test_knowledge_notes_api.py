@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -9,7 +11,8 @@ from apps.playback.models import ArtifactStatus, Transcript
 pytestmark = pytest.mark.django_db
 
 
-def test_owner_can_crud_knowledge_note():
+@patch("apps.knowledge_notes.views.update_note_embedding.delay")
+def test_owner_can_crud_knowledge_note(mock_embedding_delay):
     owner = User.objects.create_user(
         username="owner-note-crud",
         password="secret",
@@ -95,7 +98,8 @@ def test_filter_by_media_item():
     assert [entry["id"] for entry in response.data] == [first_note.id]
 
 
-def test_linked_notes_relation():
+@patch("apps.knowledge_notes.views.update_note_embedding.delay")
+def test_linked_notes_relation(mock_embedding_delay):
     owner = User.objects.create_user(
         username="owner-note-links",
         password="secret",
