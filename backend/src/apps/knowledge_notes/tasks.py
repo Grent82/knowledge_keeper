@@ -148,10 +148,24 @@ def generate_knowledge_notes(self, transcript_id: int, force: bool = False) -> N
         logger.error("Note generation failed for transcript %s: %s", transcript_id, exc)
         raise self.retry(exc=exc, countdown=60) from exc
 
+    existing_signatures: set[tuple[str, str]] = set(
+        KnowledgeNote.objects.filter(owner=owner, ai_generated=True)
+        .values_list("kind", "title")
+        .iterator()
+    )
+
     valid_kinds = {choice[0] for choice in NoteKind.choices}
     notes = []
     for result in results:
         kind = result.kind if result.kind in valid_kinds else NoteKind.GENERAL
+        if (kind, result.title) in existing_signatures:
+            logger.info(
+                "Skipping note '%s' (%s) — already exists for owner %s",
+                result.title,
+                kind,
+                owner.id,
+            )
+            continue
         notes.append(
             KnowledgeNote(
                 owner=owner,

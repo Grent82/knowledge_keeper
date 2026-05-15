@@ -338,6 +338,11 @@ class OpenAICompatibleNoteProvider:
         return _filter_note_results(results)
 
 
+def _stub_title_suffix(focus: str, words: int = 4) -> str:
+    """Return a short unique suffix from a focus sentence for stub note titles."""
+    return " ".join(focus.split()[:words])
+
+
 class StubNoteProvider:
     """Returns deterministic stub notes for local development without an AI backend."""
 
@@ -365,10 +370,14 @@ class StubNoteProvider:
             else "Mehr Spielraum entsteht oft dort, wo feste Annahmen geprueft werden."
         )
 
+        insight_title = f"Ich erkenne: {_stub_title_suffix(first)}"[:80]
+        action_title = f"Ich pruefe: {_stub_title_suffix(second)}"[:80]
+        reflection_title = f"Mir wird klar: {_stub_title_suffix(third)}"[:80]
+
         results = [
             NoteResult(
                 kind="insight",
-                title="Ich erkenne mehr Spielraum",
+                title=insight_title,
                 summary_sentence=first,
                 source_excerpt=first,
                 why_it_matters="Sie macht die Kernidee des Inhalts schnell wieder auffindbar.",
@@ -394,7 +403,7 @@ class StubNoteProvider:
             ),
             NoteResult(
                 kind="action",
-                title="Ich pruefe meinen Alltag neu",
+                title=action_title,
                 summary_sentence="Pruefe eine eigene Ueberzeugung an einem kleinen Gegenbeispiel.",
                 source_excerpt=second[:160],
                 why_it_matters="So wird aus einer abstrakten Idee ein testbarer naechster Schritt.",
@@ -425,7 +434,7 @@ class StubNoteProvider:
             ),
             NoteResult(
                 kind="reflection",
-                title="Mir wird Klarheit wichtiger",
+                title=reflection_title,
                 summary_sentence=(
                     "Die Notiz oeffnet eine Spannung zwischen Sicherheit und Klarheit."
                 ),
