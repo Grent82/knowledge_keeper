@@ -17,14 +17,40 @@ def _split_into_chunks(text: str, words_per_chunk: int = 500) -> list[str]:
     return chunks
 
 
+def _note_link_text(note) -> str:
+    return " ".join(
+        part.strip()
+        for part in [
+            note.title,
+            note.summary_sentence,
+            note.core_insight,
+            note.deeper_principle,
+        ]
+        if part.strip()
+    )
+
+
+def get_link_reranker_provider():
+    from .providers import get_link_reranker_provider as provider_factory
+
+    return provider_factory()
+
+
 @shared_task
 def link_notes_by_principle(note_id: int) -> None:
     """Auto-link a note to others with similar deeper_principle via embedding cosine similarity."""
-    from .models import KnowledgeNote
+    from .models import KnowledgeNote, KnowledgeNoteLinkCandidate, LinkCandidateStatus
     from .providers import get_embedding_provider
     from .similarity import cosine_similarity
+    from .tfidf import score_text_against_corpus
 
     threshold = float(getattr(django_settings, "PRINCIPLE_LINK_THRESHOLD", 0.85))
+    final_threshold = float(getattr(django_settings, "PRINCIPLE_LINK_FINAL_THRESHOLD", 0.7))
+    embedding_weight = float(getattr(django_settings, "PRINCIPLE_LINK_EMBEDDING_WEIGHT", 0.7))
+    tfidf_weight = float(getattr(django_settings, "PRINCIPLE_LINK_TFIDF_WEIGHT", 0.3))
+    rerank_enabled = bool(getattr(django_settings, "PRINCIPLE_LINK_RERANK_ENABLED", False))
+    rerank_top_k = int(getattr(django_settings, "PRINCIPLE_LINK_RERANK_TOP_K", 3))
+    rerank_weight = float(getattr(django_settings, "PRINCIPLE_LINK_RERANK_WEIGHT", 0.5))
 
     try:
         note = KnowledgeNote.objects.get(id=note_id)
@@ -45,8 +71,13 @@ def link_notes_by_principle(note_id: int) -> None:
         .exclude(id=note_id)
         .exclude(deeper_principle="")
     )
+    corpus_texts = [
+        _note_link_text(note),
+        *[_note_link_text(candidate) for candidate in candidates],
+    ]
+    source_text = _note_link_text(note)
 
-    linked_ids: list[int] = []
+    candidate_records: list[KnowledgeNoteLinkCandidate] = []
     for candidate in candidates:
         if not candidate.deeper_principle.strip():
             continue
@@ -56,15 +87,81 @@ def link_notes_by_principle(note_id: int) -> None:
             continue
         score = cosine_similarity(note_emb, cand_emb)
         if score >= threshold:
-            linked_ids.append(candidate.id)
+            tfidf_score = score_text_against_corpus(
+                source_text,
+                _note_link_text(candidate),
+                corpus_texts,
+            )
+            combined_score = (embedding_weight * score) + (tfidf_weight * tfidf_score)
+            status = (
+                LinkCandidateStatus.ACCEPTED
+                if combined_score >= final_threshold
+                else LinkCandidateStatus.CANDIDATE
+            )
+            candidate_record, _ = KnowledgeNoteLinkCandidate.objects.update_or_create(
+                source_note=note,
+                target_note=candidate,
+                provenance="embedding.deeper_principle",
+                defaults={
+                    "embedding_score": score,
+                    "tfidf_score": tfidf_score,
+                    "combined_score": combined_score,
+                    "status": status,
+                },
+            )
+            candidate_records.append(candidate_record)
 
+    if rerank_enabled and candidate_records:
+        ranked_candidates = sorted(
+            candidate_records,
+            key=lambda item: item.combined_score,
+            reverse=True,
+        )
+        top_candidates = ranked_candidates[:rerank_top_k]
+        rerank_payload = [
+            {
+                "id": candidate.target_note_id,
+                "text": _note_link_text(candidate.target_note),
+                "combined_score": candidate.combined_score,
+            }
+            for candidate in top_candidates
+        ]
+        try:
+            rerank_scores = get_link_reranker_provider().rerank(source_text, rerank_payload)
+        except Exception:
+            rerank_scores = {}
+        for candidate in top_candidates:
+            rerank_score = rerank_scores.get(candidate.target_note_id)
+            if rerank_score is None:
+                continue
+            candidate.rerank_score = rerank_score
+            candidate.combined_score = ((1 - rerank_weight) * candidate.combined_score) + (
+                rerank_weight * rerank_score
+            )
+            candidate.status = (
+                LinkCandidateStatus.ACCEPTED
+                if candidate.combined_score >= final_threshold
+                else LinkCandidateStatus.CANDIDATE
+            )
+            candidate.save(update_fields=["rerank_score", "combined_score", "status", "updated_at"])
+
+    linked_ids = [
+        candidate.target_note_id
+        for candidate in KnowledgeNoteLinkCandidate.objects.filter(
+            source_note=note,
+            provenance="embedding.deeper_principle",
+            status=LinkCandidateStatus.ACCEPTED,
+        ).order_by("-combined_score")
+    ]
+
+    note.linked_notes.set(linked_ids)
     if linked_ids:
-        note.linked_notes.add(*linked_ids)
         logger.info(
-            "Auto-linked note %d to %d notes via deeper_principle (threshold=%.2f)",
+            "Auto-linked note %d to %d notes via deeper_principle (threshold=%.2f, final=%.2f)",
             note_id,
             len(linked_ids),
             threshold,
+            final_threshold,
         )
 
 

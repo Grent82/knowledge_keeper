@@ -13,6 +13,12 @@ class NoteKind(models.TextChoices):
     GENERAL = "general", "General"
 
 
+class LinkCandidateStatus(models.TextChoices):
+    CANDIDATE = "candidate", "Candidate"
+    ACCEPTED = "accepted", "Accepted"
+    REJECTED = "rejected", "Rejected"
+
+
 class KnowledgeNote(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -66,3 +72,44 @@ class KnowledgeNote(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class KnowledgeNoteLinkCandidate(models.Model):
+    source_note = models.ForeignKey(
+        KnowledgeNote,
+        on_delete=models.CASCADE,
+        related_name="outgoing_link_candidates",
+    )
+    target_note = models.ForeignKey(
+        KnowledgeNote,
+        on_delete=models.CASCADE,
+        related_name="incoming_link_candidates",
+    )
+    embedding_score = models.FloatField(default=0.0)
+    tfidf_score = models.FloatField(default=0.0)
+    combined_score = models.FloatField(default=0.0)
+    rerank_score = models.FloatField(null=True, blank=True)
+    provenance = models.CharField(max_length=128, default="embedding.deeper_principle")
+    status = models.CharField(
+        max_length=20,
+        choices=LinkCandidateStatus.choices,
+        default=LinkCandidateStatus.CANDIDATE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-combined_score", "-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_note", "target_note", "provenance"],
+                name="knowledge_note_link_candidate_unique_source_target_provenance",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(source_note=models.F("target_note")),
+                name="knowledge_note_link_candidate_no_self_link",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.source_note_id}->{self.target_note_id} ({self.provenance})"

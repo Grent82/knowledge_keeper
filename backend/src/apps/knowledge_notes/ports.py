@@ -35,3 +35,13 @@ class SubstanceGateProvider(Protocol):
     def assess(self, text: str) -> int:
         """Return transformation potential score 0-10. >= threshold means proceed."""
         ...
+
+
+class LinkRerankerProvider(Protocol):
+    def rerank(
+        self,
+        anchor_text: str,
+        candidates: list[dict[str, str | float | int]],
+    ) -> dict[int, float]:
+        """Return rerank scores keyed by candidate note id."""
+        ...
