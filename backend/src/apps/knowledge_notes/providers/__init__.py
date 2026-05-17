@@ -1,5 +1,6 @@
 def get_embedding_provider():
     from django.conf import settings
+
     from .openai_embedding import OpenAICompatibleEmbeddingProvider
 
     return OpenAICompatibleEmbeddingProvider(
@@ -11,6 +12,7 @@ def get_embedding_provider():
 
 def get_substance_gate_provider():
     from django.conf import settings
+
     from .openai_substance_gate import OpenAICompatibleSubstanceGateProvider
 
     return OpenAICompatibleSubstanceGateProvider(

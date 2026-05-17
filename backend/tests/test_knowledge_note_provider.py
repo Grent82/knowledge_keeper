@@ -1,7 +1,9 @@
 from apps.knowledge_notes.ports import NoteResult
 from apps.knowledge_notes.providers.openai_compatible import (
+    OpenAICompatibleNoteProvider,
     _build_summaries_section,
     _build_transcript_sections,
+    _extract_json_array,
     _filter_note_results,
 )
 
@@ -136,3 +138,45 @@ def test_build_summaries_section_includes_all_ready_kinds():
 
 def test_build_summaries_section_returns_empty_string_for_empty_input():
     assert _build_summaries_section({}) == ""
+
+
+def test_extract_json_array_recovers_array_from_wrapped_text():
+    raw = (
+        "Hier ist das Ergebnis:\\n```json\\n"
+        "[{\"title\":\"Ich erkenne etwas\",\"kind\":\"insight\"}]\\n```"
+    )
+
+    items = _extract_json_array(raw)
+
+    assert items == [{"title": "Ich erkenne etwas", "kind": "insight"}]
+
+
+def test_note_provider_disables_qwen_thinking_mode():
+    captured: dict[str, object] = {}
+
+    class DummyCompletions:
+        def create(self, **kwargs):
+            captured.update(kwargs)
+
+            class Message:
+                content = "[]"
+                model_extra = {}
+
+            class Choice:
+                message = Message()
+                model_extra = {}
+
+            class Response:
+                choices = [Choice()]
+
+            return Response()
+
+    class DummyChat:
+        completions = DummyCompletions()
+
+    provider = OpenAICompatibleNoteProvider("https://example.com", "test-key", "test-model")
+    provider._client = type("DummyClient", (), {"chat": DummyChat()})()
+
+    provider.generate("Kurzes Transkript.", language_code="de", summaries={"short": "Kurz"})
+
+    assert captured["extra_body"] == {"chat_template_kwargs": {"enable_thinking": False}}

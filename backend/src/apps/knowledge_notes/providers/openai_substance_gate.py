@@ -41,6 +41,7 @@ class OpenAICompatibleSubstanceGateProvider:
                     {"role": "system", "content": _GATE_SYSTEM},
                     {"role": "user", "content": _GATE_USER.format(chunk=text[:1500])},
                 ],
+                extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                 max_tokens=5,
                 temperature=0,
             )

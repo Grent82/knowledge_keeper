@@ -271,6 +271,24 @@ def _build_prompt_context(transcript_text: str) -> str:
     return "\n\n".join(section_lines)[:12000]
 
 
+def _extract_json_array(raw_content: str) -> list[object]:
+    try:
+        parsed = json.loads(raw_content)
+    except json.JSONDecodeError:
+        pass
+    else:
+        return parsed if isinstance(parsed, list) else []
+
+    start = raw_content.find("[")
+    end = raw_content.rfind("]") + 1
+    if start == -1 or end == 0:
+        raise json.JSONDecodeError("No JSON array found", raw_content, 0)
+
+    candidate = raw_content[start:end]
+    parsed = json.loads(candidate)
+    return parsed if isinstance(parsed, list) else []
+
+
 class OpenAICompatibleNoteProvider:
     def __init__(self, base_url: str, api_key: str, model: str) -> None:
         self._base_url = base_url
@@ -301,21 +319,18 @@ class OpenAICompatibleNoteProvider:
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             max_tokens=2048,
             temperature=0.4,
         )
         raw_content = (response.choices[0].message.content or "").strip()
 
         try:
-            items = json.loads(raw_content)
+            items = _extract_json_array(raw_content)
         except json.JSONDecodeError:
             logger.warning("Note provider returned non-JSON response; attempting extraction")
-            start = raw_content.find("[")
-            end = raw_content.rfind("]") + 1
-            if start == -1 or end == 0:
-                logger.error("Could not extract JSON array from note provider response")
-                return []
-            items = json.loads(raw_content[start:end])
+            logger.error("Could not extract JSON array from note provider response")
+            return []
 
         results = []
         for raw in items:
