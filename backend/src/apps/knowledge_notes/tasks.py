@@ -294,8 +294,13 @@ def update_note_embedding(note_id: int) -> None:
     if not text:
         return
 
-    provider = get_embedding_provider()
-    embedding = provider.embed_text(text)
+    try:
+        provider = get_embedding_provider()
+        embedding = provider.embed_text(text)
+    except Exception as exc:
+        logger.warning("Skipping note embedding for note %s: %s", note_id, exc)
+        return
+
     KnowledgeNote.objects.filter(id=note_id).update(
         embedding=embedding,
         embedding_updated_at=timezone.now(),

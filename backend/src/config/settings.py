@@ -163,6 +163,7 @@ SUMMARY_PROVIDER = os.getenv("SUMMARY_PROVIDER", "stub")
 AI_HUB_BASE_URL = os.getenv("AI_HUB_BASE_URL", "")
 AI_HUB_API_KEY = os.getenv("AI_HUB_API_KEY", "")
 AI_HUB_MODEL = os.getenv("AI_HUB_MODEL", "qwen-3.5-122b-sovereign")
+AI_HUB_EMBEDDING_MODEL = os.getenv("AI_HUB_EMBEDDING_MODEL", "")
 RETRIEVAL_PROVIDER = os.getenv("RETRIEVAL_PROVIDER", "stub")
 CHAT_PROVIDER = os.getenv("CHAT_PROVIDER", "stub")
 DEV_BLOCK_ON_PENDING_MIGRATIONS = (

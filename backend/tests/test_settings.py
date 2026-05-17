@@ -14,6 +14,7 @@ def test_knowledge_note_provider_setting_exists() -> None:
     assert settings.KNOWLEDGE_NOTE_PROVIDER in {"stub", "openai_compatible"}
     assert settings.SUBSTANCE_GATE_PROVIDER in {"stub", "openai_compatible"}
     assert settings.SUBSTANCE_GATE_THRESHOLD >= 0
+    assert isinstance(settings.AI_HUB_EMBEDDING_MODEL, str)
 
 
 def test_csrf_trusted_origins_keep_loopback_entries_when_env_override_is_narrow(

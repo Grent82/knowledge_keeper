@@ -6,7 +6,7 @@ def get_embedding_provider():
     return OpenAICompatibleEmbeddingProvider(
         base_url=settings.AI_HUB_BASE_URL,
         api_key=settings.AI_HUB_API_KEY,
-        model=settings.AI_HUB_MODEL,
+        model=settings.AI_HUB_EMBEDDING_MODEL,
     )
 
 
